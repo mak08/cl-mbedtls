@@ -1,0 +1,122 @@
+================================================================================
+Files
+--------------------------------------------------------------------------------
+
+ * api.cl
+        Application program interface
+ * ctypes.c
+        Determine datatype sizes, generate mbed-ctypes.cl 
+ * libmbed_aux.so
+        see mbed_aux.c
+ * libraries.cl
+        CFFI foreign library definitions for the mbedTLS libraries and libmed_aux
+ * Makefile
+        Generates ctypes and libmed_aux.so
+ * mbed_aux.c
+        libmbed_aux: net_send, net_recv and debug callback functions
+ * mbed-aux.cl
+        Bindings for libmbed_aux, poll, sockopt; CFFI aux functions
+ * mbed-crypto.cl
+        Encryption, Hashing (NIY)
+ * mbed-ctypes.cl
+        System and mbedTLS datatype sizes and constantss
+ * mbed-net.cl
+        TCP and UDP sockets (net.h)
+ * mbed-pk.cl
+        Private Keys (pk.h)
+ * mbed-ssl.cl
+        TLS connections (ssl.h)
+ * mbed-x509_crt.cl
+        Handling certificates (x509_crt.h)
+ * package.cl
+        Exported functions
+
+Other files
+ * mbed-ctr_drbg.cl
+        Random number generator (ctr_drbg.h)
+ * mbed-debug.cl
+        (debug.h)
+ * mbed-entropy.cl
+        (entropy.h)
+ * mbed-ssl_cache.cl
+        (ssl_cache.h)
+
+
+================================================================================
+ToDo
+--------------------------------------------------------------------------------
+
+*   Fix memory leaks
+*   Fix Makefile: add config layer for discovering header files?
+*   Add/export Crypto API bindings
+*   Add documentation
+*   Add stand-alone examples
+
+*   ctypes.c could be replaced by asdf/cffi grovelling  
+
+================================================================================
+HowTo
+--------------------------------------------------------------------------------
+
+*   Create server certificates
+    =>  Use mbedTLS helper programs to generate a private key and a self-signed certificate from it;
+        -   add extensions: key_encipherment (see below) 
+        $ gen_key filename=localhost_key.pem
+
+        $ cert_write  serial=2 \
+                    selfsign=1 \
+                    issuer_key=localhost_key.pem \ 
+                    issuer_name=CN=localhost,O=Michael\ Kappert,C=DE \
+                    is_ca=1 \
+                    key_usage=digital_signature,key_encipherment,data_encipherment,key_agreement \
+                    max_pathlen=0 \
+                    output_file=localhost_cert.pem
+
+    =>  Use certificate both as CA and server certificate
+
+*   Cipherlist  
+    =>  Use Mozilla 'modern' ciphers
+        TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384
+        TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+        TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256
+        TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
+        TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
+
+
+================================================================================
+Notes
+--------------------------------------------------------------------------------
+
+SSl Context deps
+--------------------------------------------------------------------------------
+
+ssl <-- conf
+ssl <-- client_fd // bio
+
+conf <-- srvcert
+conf <-- pkey
+conf <-- cache
+conf <-- my_debug
+conf <-- mbedtls_ctr_drbg_random
+conf <-- ctr_drbg
+conf <-- MBEDTLS_SSL_IS_SERVER, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT
+
+ctr_drbg <--  mbedtls_entropy_func, &entropy
+
+--------------------------------------------------------------------------------
+Free
+----------------------------------------
+client_fd
+listen_fd
+
+srvcert
+pkey
+conf
+cache
+ctr_drbg
+entropy
+
+ssl
+
+--------------------------------------------------------------------------------
+================================================================================
