@@ -2,15 +2,13 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2015-12-09 20:00:23>
+;;; Last Modified <michael 2017-02-28 22:56:47>
 
 (in-package mbedtls)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar *srcdir* (directory-namestring (dm:compile-truename)))
-
-(pushnew *srcdir*
+(pushnew (asdf:system-source-directory :cl-mbedtls)
          *foreign-library-directories*
          :test #'equalp)
 

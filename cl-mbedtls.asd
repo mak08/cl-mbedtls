@@ -2,12 +2,12 @@
 ;;; Description
 ;;; Author         Michael Kappert
 ;;; Created        22/03/2000 11:15:16
-;;; Last Modified  <michael 2017-02-27 23:37:12>
+;;; Last Modified  <michael 2017-02-28 21:10:39>
 
 (defsystem "cl-mbedtls"
   :description "mbedTLS bindings"
   :default-component-class cl-source-file.cl
-  :depends-on ("log2")
+  :depends-on ("bordeaux-threads" "cl-utilities" "log2")
   :serial t
   :components ((:file "package")
                ;; Define & load lxternal library 
