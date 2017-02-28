@@ -2,7 +2,7 @@
 CFFI bindings for mbedTLS
 
 ## Description
-cl-mbedtls provides CFFI bindings for [mbedTLS](https://www.mbed.com/en/technologies/security/mbed-tls/), a secure networking and encryption library. cl-mbedtls is still work in progress. It currently provides enough features to run [PolarSeal](https://github.com/mak08/polarseal). 
+cl-mbedtls provides CFFI bindings for [mbedTLS](https://www.mbed.com/en/technologies/security/mbed-tls/), a secure networking and encryption library. cl-mbedtls is still work in progress. It currently provides enough features to run [PolarSeal](https://github.com/mak08/polarseal). Supports SBCL and CCL.
 
 ## Installation
 * Configure & build mbedTLS 
@@ -14,6 +14,12 @@ cl-mbedtls provides CFFI bindings for [mbedTLS](https://www.mbed.com/en/technolo
     cmake -DUSE_SHARED_MBEDTLS_LIBRARY=On .
     ```
  
+* Install dependencies
+  * [log2](https://github.com/mak08/log2)
+  * Via [quicklisp](https://www.quicklisp.org/beta/):
+    * bordeaux-threads
+    * cl-utilities
+  
 * Build and load cl-mbedtls
   * Run `make` in the cl-mbedtls folder
 
