@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-24 01:41:45>
+;;; Last Modified <michael 2017-03-02 17:24:23>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -203,13 +203,15 @@
        (t
         (log2:debug "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
-(defmethod accept ((server plain-socket-server) &key)
+(defmethod accept ((server plain-socket-server)
+                   &key
+                     (timeout *accept-timeout*))
   (let ((client-socket (foreign-alloc '(:struct mbedtls_net_context))))
     (mbedtls-net-init client-socket)
     (log2:debug "accept: Waiting for a remote connection ...")
     (multiple-value-bind (res peer)
         ;; Use *accept-timeout* to allow the server loop to exit after a QUIT command
-        (mbedtls-net-accept (server-socket server) client-socket :timeout *accept-timeout*)
+        (mbedtls-net-accept (server-socket server) client-socket :timeout timeout)
       (cond
         ((null res)
          ;; mbedtls-net-accept returns NIL if polling fails and accept was not called 
@@ -228,6 +230,7 @@
 
 (defmethod accept ((server ssl-socket-server)
                    &key
+                     (timeout *accept-timeout*)
                      (send-fn *default-ssl-net-send-function*)
                      (recv-fn *default-ssl-net-recv-function*))
   (let* ((client-socket (foreign-alloc '(:struct mbedtls_net_context)))
@@ -243,8 +246,8 @@
     (mbedtls-net-init client-socket)
     (log2:debug "accept: Waiting for a remote connection ...")
     (multiple-value-bind (res peer)
-        ;; Use a 1s accept timeout to allow the server loop to exit after a QUIT command
-        (mbedtls-net-accept (server-socket server) client-socket :timeout *accept-timeout*)
+        ;; Use *accept-timeout* to allow the server loop to exit after a QUIT command
+        (mbedtls-net-accept (server-socket server) client-socket :timeout timeout)
       (when res
         (when (< res 0)
           (error 'stream-read-error
