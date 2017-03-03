@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-23 23:41:48>
+;;; Last Modified <michael 2017-03-03 20:46:58>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -214,7 +214,7 @@
 
 (defcallback net-send :int ((ctx :pointer) (buf (:pointer :unsigned-char)) (len size_t))
   (let ((ret (mbedtls-net-send ctx buf len)))
-    (log2:debug "net-send -> ~a" ret)
+    (log2:debug "net-send(~a, ~a, ~a) -> ~a" ctx buf len ret)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -244,20 +244,19 @@
 (defcfun "mbedtls_net_recv_timeout" :int (context :pointer) (buffer :string) (len size_t) (timeout :uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ## Outdated - keepalive-timeout is disused. ssl_conf_read_timeout should do the job. ##
+;;;   This function is installed with mbedtls_ssl_set_bios as the f_recv_timeout
+;;; function used in calls to mbedtls_ssl_read().
 ;;;
-;;; *KEEPALIVE-TIMEOUT* allows you to specify a different timeout for each
-;;; mbedtls_ssl_read() call. Note that the net_recv_timeout function is called
-;;; at least twice from mbedtls_ssl_read - to read the SSL header and then to
-;;; read the payload.
+;;;   The timeout is configured with mbedtls-ssl-conf-read-timeout
+;;; in refresh-buffer.
+;;;
+;;;   Note that the net_recv_timeout function is called at least twice from
+;;; mbedtls_ssl_read - to read the SSL header and then to read the payload.
 
 (defcallback net-recv-timeout :int ((ctx :pointer) (buf (:pointer :unsigned-char)) (len size_t) (timeout :int32))
-  (log2:debug "net_recv called with timeout ~a" timeout)
-  (let ((ret (mbedtls-net-recv-timeout ctx
-                                       buf
-                                       len
-                                       timeout)))
-    (log2:debug "net-recv -> ~a" ret)
+  (let ((ret
+         (mbedtls-net-recv-timeout ctx buf len timeout)))
+    (log2:debug "net_recv_timeout(~a, ~a, ~a, ~a) => ~a" ctx buf len timeout ret)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
