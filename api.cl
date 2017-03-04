@@ -1,22 +1,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-04 01:16:15>
+;;; Last Modified <michael 2017-03-04 20:40:52>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
 ;;;  - closing&deallocation of ressources plain/ssl-stream, mbedtls stream
+;;;  - get-octets / buffering seems awkward
 ;;;  - setting the read timeout
 ;;;  - handling of empty reads
 ;;;  - set blocking state (of server socket)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; NOTES
-;;;
-;;; - keepalive support
-;;;   - there is currently no way to use distinct timeouts for reading initial request data and
-;;;     for subsequent requests on SSL sockets. Ideally, we don't want to wait very long for the first request. 
-;;; - Uses blocking I/O; how do i use non-blocking I/O?
+;;;  - keepalive support
+;;;    - there is currently no way to use distinct timeouts for reading initial request data and
+;;;      for subsequent requests on SSL sockets. Ideally, we don't want to wait very long for the first request. 
+;;;  - Add support for non-blocking I/O, currently only blocking I/O is supported
 
 (declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
 ;; (declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
@@ -381,7 +378,9 @@ Must be accept a timeout argument.")
 (defgeneric get-octets (stream length))
 
 (defmethod get-octets ((stream socket-stream) length)
-  (read-stream-buffered stream length))
+  (if length
+      (read-stream-buffered stream length)
+      (subseq (buffer stream) (bufpos stream))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; internal function
