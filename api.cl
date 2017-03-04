@@ -1,12 +1,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-02 17:24:23>
+;;; Last Modified <michael 2017-03-04 01:16:15>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
-;;; - cleanup *accept-timeout*: wrong comment, pass as keyword arg etc.
-;;; - closing&deallocation ressources plain/ssl-stream, mbedtls stream
+;;;  - closing&deallocation of ressources plain/ssl-stream, mbedtls stream
+;;;  - setting the read timeout
+;;;  - handling of empty reads
+;;;  - set blocking state (of server socket)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; NOTES
@@ -15,16 +17,9 @@
 ;;;   - there is currently no way to use distinct timeouts for reading initial request data and
 ;;;     for subsequent requests on SSL sockets. Ideally, we don't want to wait very long for the first request. 
 ;;; - Uses blocking I/O; how do i use non-blocking I/O?
-;;; - read-from-stream returns a byte array
-;;; - ToDo:
-;;;   - deallocation
-;;;   - handling of empty reads
-;;;   - performance: use per-thread reusable buffers
-;;;   - better socket read timeout control
-;;;     (we want keepalive read >> client connection read >> server connection read)
 
-;; (declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
-(declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
+(declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
+;; (declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
 
 (in-package mbedtls)
 
@@ -59,11 +54,6 @@
              (format s "In ~a: zero bytes received on stream ~a"
                      (error.location c)
                      (error.stream c)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Timeout the accept call to force re-checking of the SERVER RUN condition
-
-(defparameter *accept-timeout* 1500)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Macros
@@ -156,23 +146,27 @@
 
 (defparameter *default-ssl-net-send-function*
   ;; *net-send-function*
-  (callback net-send))
+  (callback net-send)
+  "The send function installed by ACCEPT if the send_fn keyword is not used.")
 
 (defparameter *default-ssl-net-recv-function*
   ;; *net-recv-timeout-function*
-  (callback net-recv-timeout))
+  (callback net-recv-timeout)
+  "The recv function installed by ACCEPT if the recv_fn keyword is not used.
+Must be accept a timeout argument.")
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defgeneric accept (socket-server &key &allow-other-keys))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ACCEPT calls are canceled after 1.5s by default.
+;;; The SSL ACCEPT method needs more work - eg. handling failed handshakes.
+
+(defgeneric accept (socket-server &key timeout &allow-other-keys))
+(defparameter *accept-timeout* 1500)
+
 
 (defgeneric deallocate (thing))
 (defmethod deallocate ((thing null))
   )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; The accept methods should probably be refactored.
-;;; The connection should be returned to the caller as soon as it's
-;;; established.
 
 (defmacro with-server-connection (((connvar server) &rest keys &key &allow-other-keys) &body body)
   `(let ((,connvar (accept ,server ,@keys)))
@@ -284,7 +278,7 @@
   (deallocate (ssl-env ssl-stream)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Take care to release the server-socket if creating the server instance fails!
+;;; 
 
 (defun create-plain-socket-server (host port
                                    &key
@@ -313,7 +307,7 @@
       server)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Take care to release the server-socket if creating the server instance fails!
+;;; 
 
 (defun create-ssl-socket-server (host port
                                  &key
@@ -357,15 +351,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; This function reads the first data from the socket after the connection
-;;; was established (for SSL, handshake was performed)
-
+;;; Is this still needed?
 (defmethod initialize-instance :after ((thing socket-stream) &rest initargs &key &allow-other-keys)
   (log2:debug "Initializing buffer for ~a" thing))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; API function
+
 (defgeneric get-line (stream &key timeout))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod get-line ((stream socket-stream) &key (timeout nil))
   ;; Get CRLF terminated line from stream octets buffer;
@@ -382,16 +375,16 @@
                      (eql (aref (buffer stream) (bufpos stream)) 10))
             (incf (bufpos stream))))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; API function
+
 (defgeneric get-octets (stream length))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod get-octets ((stream socket-stream) length)
   (read-stream-buffered stream length))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; READ STREAM BUFFERED
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; internal function
 
 (defun read-stream-buffered (stream count)
   (when (buffer-exhausted-p stream)
@@ -417,16 +410,18 @@
         (apply #'concatenate '(vector (unsigned-byte 8)) bytes)
         count)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; internal function
+
 (defgeneric refresh-buffer (stream &key timeout))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Blocking read with timeout.
 ;;; There are different timeout mechanisms for plain streams and ssl streams:
 ;;; - Plain streams simply use mbedtls-net-recv-timeout.
-;;; - For SSL streams, a recv_timeout function must be configured.
-;;;   By default, *default-ssl-net-recv-function* is used. Then, a timeout
-;;;   must be configured with mbedtls-ssl-conf-read-timeout
+;;; - For SSL streams, a recv_timeout function must be installed with mbedtls-ssl-set-bio.
+;;;   By default, *default-ssl-net-recv-function* is used. Data may b read from the SSL 
+;;;   stream with mbed-ssl-read, but this function does not have a timeout argument. 
+;;;   Instead the timeout must be configured with mbedtls-ssl-conf-read-timeout.
 
 (defmethod refresh-buffer ((stream plain-stream) &key (timeout nil))
   (unless (buffer-exhausted-p stream)
@@ -613,7 +608,7 @@
     (check-retval 0
       (with-foreign-string (custom entropy-custom)
         ;; Digging deep into ctr_drbg.c reveals that $custom is copied internally,
-        ;; we may stack-allocate it here.
+        ;; it may be stack-allocated here.
         (mbedtls-ctr-drbg-seed ctr-drbg
                                *mbedtls-entropy-func-function*
                                entropy 
