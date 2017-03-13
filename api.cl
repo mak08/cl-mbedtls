@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-04 20:40:52>
+;;; Last Modified <michael 2017-03-13 22:15:24>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -64,8 +64,18 @@
         ,retval)
        (t
         (let ((,rettextvar (mbedtls-strerror ,retvar)))
-          #+sbcl (log2:debug "~a" (sb-debug:backtrace-as-list))
           (error "~a returned ~a (~a)" ',form ,rettextvar ,retvar)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions
+
+(defgeneric accept (socket-server &key timeout &allow-other-keys))
+(defgeneric deallocate (thing))
+
+(defmethod deallocate ((thing null))
+  (log2:warning "Deallocating NULL?"))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Streams
@@ -82,6 +92,10 @@
    (bufpos :accessor bufpos :initform 0)
    (bufsize :accessor bufsize :initform 0)
    (buffer% :reader buffer% :initform (make-cbuffer))))
+
+(defmethod deallocate :after ((stream socket-stream))
+  (log2:debug "Deallocating stream buffer")
+  (foreign-free (cbuffer-data (buffer% stream))))
 
 (defclass plain-stream (socket-stream)
   ())
@@ -150,20 +164,13 @@
   ;; *net-recv-timeout-function*
   (callback net-recv-timeout)
   "The recv function installed by ACCEPT if the recv_fn keyword is not used.
-Must be accept a timeout argument.")
+Must accept a timeout argument.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ACCEPT calls are canceled after 1.5s by default.
 ;;; The SSL ACCEPT method needs more work - eg. handling failed handshakes.
 
-(defgeneric accept (socket-server &key timeout &allow-other-keys))
 (defparameter *accept-timeout* 1500)
-
-
-(defgeneric deallocate (thing))
-(defmethod deallocate ((thing null))
-  )
-
 
 (defmacro with-server-connection (((connvar server) &rest keys &key &allow-other-keys) &body body)
   `(let ((,connvar (accept ,server ,@keys)))
@@ -199,7 +206,7 @@ Must be accept a timeout argument.")
                      (timeout *accept-timeout*))
   (let ((client-socket (foreign-alloc '(:struct mbedtls_net_context))))
     (mbedtls-net-init client-socket)
-    (log2:debug "accept: Waiting for a remote connection ...")
+    (log2:trace "accept: Waiting for a remote connection ...")
     (multiple-value-bind (res peer)
         ;; Use *accept-timeout* to allow the server loop to exit after a QUIT command
         (mbedtls-net-accept (server-socket server) client-socket :timeout timeout)
@@ -498,6 +505,7 @@ Must be accept a timeout argument.")
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
                         :message (mbedtls-error-text res)))))))
+  (log2:debug "Wrote ~a bytes" (length data))
   (length data))
 
 (defmethod write-to-stream ((stream ssl-stream) (data vector))
@@ -513,9 +521,11 @@ Must be accept a timeout argument.")
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
                         :message (mbedtls-error-text res)))))))
+  (log2:debug "Wrote ~a bytes" (length data))
   (length data))
 
 (defmethod write-to-stream ((stream plain-stream) (data string))
+  (log2:debug "Writing ~a bytes" (length data))
   (with-foreign-string ((buf buflen) data)
     (let ((res
            (mbedtls-net-send (socket stream) buf buflen)))
@@ -523,9 +533,11 @@ Must be accept a timeout argument.")
         (error 'stream-write-error
                :location "write-to-stream plain"
                :message (mbedtls-error-text res)))
+      (log2:debug "Wrote ~a bytes, returning ~a" (length data) res)
       res)))
 
 (defmethod write-to-stream ((stream plain-stream) (data vector))
+  (log2:debug "Writing ~a chars" (length data))
   ;; What does Babel give us?
   ;; (assert (equal (array-element-type data) '(unsigned-byte 8))) 
   (with-foreign-array (c-data data :uint8)
@@ -535,9 +547,11 @@ Must be accept a timeout argument.")
         (error 'stream-write-error
                :location "write-to-stream plain"
                :message (mbedtls-error-text res)))
+      (log2:debug "Wrote ~a chars, returning ~a" (length data) res)
       res)))
 
 (defmethod write-to-stream ((s stream) (data vector))
+  (log2:debug "Wrote ~a bytes" (length data))
   (format s "~a" (map 'string #'code-char data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -550,7 +564,7 @@ Must be accept a timeout argument.")
   (mbedtls-net-free (raw-socket stream)))
 
 (defmethod close-socket ((stream plain-stream))
-  (log2:debug "Closing ~a" stream)
+  (log2:debug "Closing socket connection ~a" stream)
   (mbedtls-net-free (socket stream)))
 
 (defmethod close-socket ((socket socket-server))
