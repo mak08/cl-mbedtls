@@ -11,7 +11,9 @@ cl-mbedtls provides CFFI bindings for [mbedTLS](https://www.mbed.com/en/technolo
   * Build mbedTLS using
     
     ```
-    cmake -DUSE_SHARED_MBEDTLS_LIBRARY=On .
+    $ cmake -DUSE_SHARED_MBEDTLS_LIBRARY=On .
+    $ make
+    $ sudo make install
     ```
  
 * Install dependencies
