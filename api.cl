@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-13 22:15:24>
+;;; Last Modified <michael 2017-03-18 22:40:25>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -14,6 +14,8 @@
 ;;;    - there is currently no way to use distinct timeouts for reading initial request data and
 ;;;      for subsequent requests on SSL sockets. Ideally, we don't want to wait very long for the first request. 
 ;;;  - Add support for non-blocking I/O, currently only blocking I/O is supported
+;;;  - Check for memory leaks related to SSL initialization
+;;;    - Does CFFI free /return values/ of type string automatically?
 
 (declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
 ;; (declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
@@ -165,6 +167,9 @@
   (callback net-recv-timeout)
   "The recv function installed by ACCEPT if the recv_fn keyword is not used.
 Must accept a timeout argument.")
+
+(defvar *ciphersuites* (get-ciphers))
+(defvar *ciphersuite-names* (map 'vector #'mbedtls-ssl-get-ciphersuite-name *ciphersuites*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ACCEPT calls are canceled after 1.5s by default.
@@ -592,8 +597,8 @@ Must accept a timeout argument.")
   (let* ((conf (foreign-alloc '(:struct mbedtls_ssl_config)))
          (entropy (foreign-alloc '(:struct mbedtls_entropy_context)))
          (ctr-drbg (foreign-alloc '(:struct mbedtls_ctr_drbg_context)))
-         (ciphers (get-ciphers))
-         (ciphersuites (foreign-alloc :int :count (1+ (length ciphers)))))
+         (all-ciphersuites *ciphersuites*)
+         (ciphersuites (foreign-alloc :int :count (1+ (length all-ciphersuites)))))
     (mbedtls-ssl-config-init conf)
     (mbedtls-entropy-init entropy)
     (mbedtls-ctr-drbg-init ctr-drbg)
@@ -610,14 +615,12 @@ Must accept a timeout argument.")
     ;; The value SHOULD be taken from (timeout <ssl-stream>) ?!
     (mbedtls-ssl-conf-read-timeout conf 1000)
 
-    (dotimes (i (length ciphers))
-      (let ((sn (mbedtls-ssl-get-ciphersuite-name (aref ciphers i))))
-        (log2:debug "Add ciphersuite ~a~%" sn))
+    (dotimes (i (length all-ciphersuites))
       (setf (mem-aref ciphersuites :int i)
-            (aref ciphers i)))
+            (aref all-ciphersuites i)))
     (mbedtls-ssl-conf-ciphersuites conf ciphersuites)
 
-    (log2:debug "CTR_DRBG initial seeding")
+    ;; CTR_DRBG initial seeding
     (check-retval 0
       (with-foreign-string (custom entropy-custom)
         ;; Digging deep into ctr_drbg.c reveals that $custom is copied internally,
@@ -628,16 +631,18 @@ Must accept a timeout argument.")
                                custom
                                (length entropy-custom))))
 
-    (log2:debug "Set the random number generator callback")
+    ;; Set the random number generator callback
     (mbedtls-ssl-conf-rng conf *mbedtls-ctr-drbg-random-function* ctr-drbg)
 
-    (log2:debug "Set the debug callback")
+    ;; Set the debug callback
     (mbedtls-ssl-conf-dbg conf debug-function *stdout*)
     (mbedtls-debug-set-threshold debug-threshold)
 
-    (log2:debug "Configure certificates")
+    ;; Configure certificates
     (check-retval 0
       (mbedtls-ssl-conf-own-cert conf cert pkey))
+
+    ;; Return everything that needs to be references (or freed)
     (make-ssl-config :conf conf :entropy entropy :ctr-drbg ctr-drbg :ciphers ciphersuites)))
 
 (defmethod deallocate ((ssl-config ssl-config))
