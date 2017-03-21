@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-21 00:53:44>
+;;; Last Modified <michael 2017-03-21 22:08:23>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -176,6 +176,8 @@ Must accept a timeout argument.")
 
 (defparameter *accept-timeout* 1500)
 
+(defvar *thread-id* 0)
+
 (defmacro with-server-connection (((connvar server) &rest keys &key &allow-other-keys) &body body)
   `(let ((,connvar (accept ,server ,@keys))
          (%id% (gensym)))
@@ -202,11 +204,11 @@ Must accept a timeout argument.")
                   ,@body)
              (log2:debug "WITH-SERVER-CONNECTION: Cleaning up")
              (close-socket ,connvar)
-             (deallocate ,connvar)))))
+             (deallocate ,connvar)))
+         :name (create-thread-name)))
        (t
         (log2:debug "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
-  
 (defmethod accept ((server plain-socket-server)
                    &key
                      (timeout *accept-timeout*))
@@ -676,7 +678,6 @@ Must accept a timeout argument.")
       (mbedtls-pk-parse-keyfile pkey path password))
     pkey))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers
 
@@ -686,7 +687,10 @@ Must accept a timeout argument.")
   ip)
 
 (defmethod format-ip ((ip list))
-  (format () "~{~d~^.~}" ip))
+  (format () "<~{~d~^.~}>" ip))
+
+(defun create-thread-name ()
+  (format () "handler-~d" (incf *thread-id*)))
 
 ;;; EOF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
