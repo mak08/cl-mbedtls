@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-03 20:46:58>
+;;; Last Modified <michael 2017-08-05 00:36:56>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -133,7 +133,8 @@
            (cond ((not (= ret 0))
                   (error "Socket accept error ~a" (mbedtls-error-text ret)))
                  (t
-                  (assert (eql (mem-ref client-ip-len :int) 4))
+                  (unless (eql (mem-ref client-ip-len :int) 4)
+                    (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
                   (let ((ip-p (inet-ntop AF_INET client-ip dest 15)))
                     (log2:debug "Client IP: ~a" ip-p)
                     (values ret ip-p))))))

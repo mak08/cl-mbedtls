@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-21 22:08:23>
+;;; Last Modified <michael 2017-08-05 00:34:42>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -215,6 +215,7 @@ Must accept a timeout argument.")
   (multiple-value-bind (client-socket peer)
       (%accept server timeout)
     (when client-socket
+      (log2:info "Accepted PLAIN connection from peer ~a" peer)
       (make-instance 'plain-stream :socket client-socket :peer peer :keepalive (keepalive server)))))
 
 (defmethod accept ((server ssl-socket-server)
@@ -225,7 +226,8 @@ Must accept a timeout argument.")
     (multiple-value-bind (client-socket peer)
         (%accept server timeout)
       (when client-socket
-        (let* ((ssl-env (create-ssl-env
+      (log2:info "Accepted SSL connection from peer ~a" peer)
+      (let* ((ssl-env (create-ssl-env
                          (server-cert server)
                          (server-pkey server)
                          (entropy-custom server)
@@ -569,6 +571,9 @@ Must accept a timeout argument.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric close-socket (stream))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod close-socket :before ((socket t))
+  (log2:info "Closing connection to peer ~a" (peer socket)))
 
 (defmethod close-socket ((stream ssl-stream))
   (log2:debug "Closing ~a" stream)
