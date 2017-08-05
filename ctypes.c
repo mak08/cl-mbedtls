@@ -1,7 +1,7 @@
 /*
  * Description  Extract info from SSL headers  
  * Author       Michael Kappert 2015
- * Last Modified <michael 2017-02-15 23:51:11>
+ * Last Modified <michael 2017-08-05 17:00:04>
  */
 
 
@@ -83,6 +83,10 @@ int main () {
 
   ////////////////////////////////////////////////////////////////////////////////
   // Socket info
+
+  fprintf(fp, "\n");
+  fprintf(fp, "(defconstant INET_ADDRSTRLEN %i)\n", INET_ADDRSTRLEN);
+
   fprintf(fp, "\n");
   fprintf(fp, "(defconstant TCP_NODELAY %i)\n", TCP_NODELAY);
   fprintf(fp, "(defconstant IPPROTO_TCP %i)\n", IPPROTO_TCP);

@@ -11,6 +11,8 @@
 
 (defconstant EINTR 4)
 
+(defconstant INET_ADDRSTRLEN 16)
+
 (defconstant TCP_NODELAY 1)
 (defconstant IPPROTO_TCP 6)
 (defconstant AF_INET 2)
