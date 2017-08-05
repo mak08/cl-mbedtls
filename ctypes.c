@@ -1,7 +1,7 @@
 /*
  * Description  Extract info from SSL headers  
  * Author       Michael Kappert 2015
- * Last Modified <michael 2017-08-06 00:34:27>
+ * Last Modified <michael 2017-08-06 00:39:30>
  */
 
 
@@ -36,8 +36,6 @@ int main () {
   // Create definitions
 
   fp = fopen("mbed-ctypes.cl", "w");  
-  fprintf(stdout, "strerror_r returns %i\n", strerror_r(-1, buf, 1024));
-  fprintf(stdout, "Error: %s\n", buf); 
 
   ////////////////////////////////////////////////////////////////////////////////
   // Write header
