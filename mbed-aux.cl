@@ -2,7 +2,7 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-15 23:04:27>
+;;; Last Modified <michael 2017-08-05 23:59:25>
 
 (in-package mbedtls)
 (declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
@@ -13,6 +13,15 @@
 (defcvar "stdout" :pointer)
 (defcvar "stderr" :pointer)
 (defcvar "errno" :int)
+
+(defcfun strerror_r :string
+  (errno :int)
+  (buf :pointer)
+  (buflen size_t))
+
+(let ((buf (foreign-alloc :char :count 1024)))
+  (defun strerror-r (errno)
+    (strerror_r errno buf 1024)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; User functions

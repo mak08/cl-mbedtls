@@ -11,6 +11,8 @@
 
 (defconstant EINTR 4)
 
+(defconstant _POSIX_C_SOURCE 200809)
+
 (defconstant INET_ADDRSTRLEN 16)
 
 (defconstant TCP_NODELAY 1)

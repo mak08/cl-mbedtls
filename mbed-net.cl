@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-08-05 17:05:00>
+;;; Last Modified <michael 2017-08-05 17:40:10>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -120,7 +120,7 @@
           :poll
           (setf ready (poll fds 1 timeout))
           (when (and (= ready -1) (= *errno* EINTR))
-            (log2:trace "Poll error: ~d ~d, retrying." ready *errno*)
+            (log2:trace "Poll error: ~d ~s, retrying." ready (strerror_r *errno*))
             (go :poll))))
       (case ready
         (0
@@ -137,11 +137,11 @@
                     (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
                   (let ((ip-p (inet-ntop AF_INET client-ip dest 15)))
                     (when (null ip-p)
-                      (error (mbedtls-strerror *errno*)))
+                      (error (strerror-r *errno*)))
                     (log2:debug "Client IP: ~a" ip-p)
                     (values ret ip-p))))))
         (otherwise
-         (log2:debug "Poll error: ~d ~d" ready (mbedtls-strerror *errno*))
+         (log2:debug "Poll error: Ready=~d, ~s" ready (strerror-r *errno*))
          (values nil t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
