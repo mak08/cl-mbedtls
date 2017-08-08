@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-08-05 17:40:10>
+;;; Last Modified <michael 2017-08-08 20:40:14>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -120,7 +120,7 @@
           :poll
           (setf ready (poll fds 1 timeout))
           (when (and (= ready -1) (= *errno* EINTR))
-            (log2:trace "Poll error: ~d ~s, retrying." ready (strerror_r *errno*))
+            (log2:trace "Poll error: ~d ~s, retrying." ready (strerror-r *errno*))
             (go :poll))))
       (case ready
         (0
