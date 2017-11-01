@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-08-08 20:40:14>
+;;; Last Modified <michael 2017-11-01 23:27:44>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -108,7 +108,7 @@
   (with-foreign-objects
       ((client-ip :int8 4)
        (client-ip-len '(:pointer :int))
-       (dest :unsigned-char INET_ADDRSTRLEN)
+       (dest :unsigned-char (1+ INET_ADDRSTRLEN))
        (fds '(:struct pollfd) 1))
     (let ((fd1 fds)
           (sock (foreign-slot-value bind-context '(:struct mbedtls_net_context) 'fd))
@@ -135,9 +135,11 @@
                  (t
                   (unless (eql (mem-ref client-ip-len :int) 4)
                     (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
-                  (let ((ip-p (inet-ntop AF_INET client-ip dest 15)))
+                  (let ((ip-p (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN))))
                     (when (null ip-p)
-                      (error (strerror-r *errno*)))
+                      (let ((msg (strerror-r *errno*)))
+                        (log2:error "inet_ntop: ~a" msg)
+                        (error msg)))
                     (log2:debug "Client IP: ~a" ip-p)
                     (values ret ip-p))))))
         (otherwise
