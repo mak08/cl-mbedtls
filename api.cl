@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-08-05 00:34:42>
+;;; Last Modified <michael 2019-01-06 17:04:57>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -190,24 +190,26 @@ Must accept a timeout argument.")
               (close-socket ,connvar)
               (deallocate ,connvar)))
            (t
-            (log2:debug "WITH-SERVER-CONNECTION: Accept returned NIL")))))
+            (log2:trace "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
 (defmacro with-server-connection-async (((connvar server) &rest keys &key &allow-other-keys) &body body)
   `(let ((,connvar (accept ,server ,@keys)))
      (cond
        (,connvar
-        (bordeaux-threads:make-thread
-         (lambda ()
-           (unwind-protect
-                (progn
-                  (log2:debug "WITH-SERVER-CONNECTION: Executing body")
-                  ,@body)
-             (log2:debug "WITH-SERVER-CONNECTION: Cleaning up")
-             (close-socket ,connvar)
-             (deallocate ,connvar)))
-         :name (create-thread-name)))
+        (let* ((thread-name (create-thread-name))
+               (thread (bordeaux-threads:make-thread
+                        (lambda ()
+                          (unwind-protect
+                               (progn
+                                 (log2:debug "WITH-SERVER-CONNECTION-ASYNC: Executing body")
+                                 ,@body)
+                            (log2:debug "WITH-SERVER-CONNECTION-ASYNC: Cleaning up")
+                            (close-socket ,connvar)
+                            (deallocate ,connvar)))
+                        :name thread-name)))
+          (log2:debug "WITH-SERVER-CONNECTION: Spawned ~a." thread-name)))
        (t
-        (log2:debug "WITH-SERVER-CONNECTION: Accept returned NIL")))))
+        (log2:trace "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
 (defmethod accept ((server plain-socket-server)
                    &key

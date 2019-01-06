@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-11-01 23:27:44>
+;;; Last Modified <michael 2019-01-06 18:45:12>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -116,6 +116,7 @@
       (when timeout
         (setf (foreign-slot-value fd1 '(:struct pollfd) 'fd) sock)
         (setf (foreign-slot-value fd1 '(:struct pollfd) 'events) (logior pollin pollout))
+        (log2:debug "Polling ~a" sock)
         (tagbody
           :poll
           (setf ready (poll fds 1 timeout))
