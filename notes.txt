@@ -46,11 +46,11 @@ Other files
 ToDo
 --------------------------------------------------------------------------------
 
-*   Fix memory leaks
-*   Fix Makefile: add config layer for discovering header files?
+*   Add/export Hashing bindings (at least MD5)
 *   Add/export Crypto API bindings
 *   Add documentation
 *   Add stand-alone examples
+*   Fix Makefile: add config layer for discovering header files?
 
 *   ctypes.c could be replaced by asdf/cffi grovelling  
 
