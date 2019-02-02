@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-02 22:46:20>
+;;; Last Modified <michael 2019-02-02 23:02:41>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -518,11 +518,11 @@ Must accept a timeout argument.")
            (with-foreign-string ((buf buflen) chunk)
              (let ((res (mbedtls-ssl-write (socket stream) buf buflen)))
                (unless (eql res buflen)
-                 (log2:debug "mbedtls_ssl_write returned ~a" res)
+                 (log2:trace "mbedtls_ssl_write returned ~a" res)
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
                         :message (mbedtls-error-text res)))))))
-  (log2:debug "Wrote ~a bytes" (length data))
+  (log2:trace "Wrote ~a bytes" (length data))
   (length data))
 
 (defmethod write-to-stream ((stream ssl-stream) (data vector))
@@ -542,7 +542,7 @@ Must accept a timeout argument.")
   (length data))
 
 (defmethod write-to-stream ((stream plain-stream) (data string))
-  (log2:debug "Writing ~a bytes" (length data))
+  (log2:trace "Writing ~a bytes" (length data))
   (with-foreign-string ((buf buflen) data)
     (let ((res
            (mbedtls-net-send (socket stream) buf buflen)))
@@ -554,7 +554,7 @@ Must accept a timeout argument.")
       res)))
 
 (defmethod write-to-stream ((stream plain-stream) (data vector))
-  (log2:debug "Writing ~a chars" (length data))
+  (log2:trace "Writing ~a chars" (length data))
   ;; What does Babel give us?
   ;; (assert (equal (array-element-type data) '(unsigned-byte 8))) 
   (with-foreign-array (c-data data :uint8)
@@ -564,11 +564,11 @@ Must accept a timeout argument.")
         (error 'stream-write-error
                :location "write-to-stream plain"
                :message (mbedtls-error-text res)))
-      (log2:debug "Wrote ~a chars, returning ~a" (length data) res)
+      (log2:trace "Wrote ~a chars, returning ~a" (length data) res)
       res)))
 
 (defmethod write-to-stream ((s stream) (data vector))
-  (log2:debug "Wrote ~a bytes" (length data))
+  (log2:trace "Wrote ~a bytes" (length data))
   (format s "~a" (map 'string #'code-char data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -600,7 +600,7 @@ Must accept a timeout argument.")
     (mbedtls-ssl-init ssl)
     (check-retval 0
       (mbedtls-ssl-setup ssl (ssl-config-conf config)))
-    (log2:debug "SSL context ready")
+    (log2:trace "SSL context ready")
     (make-ssl-env :ssl ssl :config config)))
 
 (defmethod deallocate ((ssl-env ssl-env))
