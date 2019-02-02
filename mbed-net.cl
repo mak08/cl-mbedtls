@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-01-06 18:45:12>
+;;; Last Modified <michael 2019-02-02 22:51:26>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -116,7 +116,7 @@
       (when timeout
         (setf (foreign-slot-value fd1 '(:struct pollfd) 'fd) sock)
         (setf (foreign-slot-value fd1 '(:struct pollfd) 'events) (logior pollin pollout))
-        (log2:debug "Polling ~a" sock)
+        (log2:trace "Polling ~a" sock)
         (tagbody
           :poll
           (setf ready (poll fds 1 timeout))
@@ -144,7 +144,7 @@
                     (log2:debug "Client IP: ~a" ip-p)
                     (values ret ip-p))))))
         (otherwise
-         (log2:debug "Poll error: Ready=~d, ~s" ready (strerror-r *errno*))
+         (log2:trace "Poll error: Ready=~d, ~s" ready (strerror-r *errno*))
          (values nil t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -199,7 +199,7 @@
 
 (defcallback net-recv :int ((ctx :pointer) (buf (:pointer :unsigned-char)) (len size_t))
   (let ((ret (mbedtls-net-recv ctx buf len)))
-    (log2:debug "net-recv -> ~a" ret)
+    (log2:trace "net-recv -> ~a" ret)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -220,7 +220,7 @@
 
 (defcallback net-send :int ((ctx :pointer) (buf (:pointer :unsigned-char)) (len size_t))
   (let ((ret (mbedtls-net-send ctx buf len)))
-    (log2:debug "net-send(~a, ~a, ~a) -> ~a" ctx buf len ret)
+    (log2:trace "net-send(~a, ~a, ~a) -> ~a" ctx buf len ret)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -262,7 +262,7 @@
 (defcallback net-recv-timeout :int ((ctx :pointer) (buf (:pointer :unsigned-char)) (len size_t) (timeout :int32))
   (let ((ret
          (mbedtls-net-recv-timeout ctx buf len timeout)))
-    (log2:debug "net_recv_timeout(~a, ~a, ~a, ~a) => ~a" ctx buf len timeout ret)
+    (log2:trace "net_recv_timeout(~a, ~a, ~a, ~a) => ~a" ctx buf len timeout ret)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

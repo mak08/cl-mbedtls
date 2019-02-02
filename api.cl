@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-01-06 17:04:57>
+;;; Last Modified <michael 2019-02-02 22:46:20>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -95,7 +95,7 @@
    (buffer% :reader buffer% :initform (make-cbuffer))))
 
 (defmethod deallocate :after ((stream socket-stream))
-  (log2:debug "Deallocating stream buffer")
+  (log2:trace "Deallocating stream buffer")
   (foreign-free (cbuffer-data (buffer% stream))))
 
 (defclass plain-stream (socket-stream)
@@ -249,7 +249,7 @@ Must accept a timeout argument.")
                                send-fn
                                (null-pointer)
                                recv-fn)
-          (log2:debug "Performing handshake...")
+          (log2:trace "Performing handshake...")
           (let ((res (loop
                         :for ret = (mbedtls-ssl-handshake ssl)
                         :while (or (eql ret MBEDTLS_ERR_SSL_WANT_READ)
@@ -260,7 +260,8 @@ Must accept a timeout argument.")
               (error 'stream-read-error
                      :location "accept ssl"
                      :message (mbedtls-error-text res))))
-          (log2:debug "Handshake complete")
+          (log2:trace "Handshake complete")
+          (log2:debug "Connected to ~a" ssl-stream)
           (values ssl-stream)))))
 
 (defun %accept (server timeout)
