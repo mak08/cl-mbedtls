@@ -2,7 +2,7 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-03-14 00:12:18>
+;;; Last Modified <michael 2019-02-03 19:12:43>
 
 (in-package mbedtls)
 
@@ -21,9 +21,11 @@
 (define-foreign-library libmbedx509
   (:linux "libmbedx509.so"))
 
-(use-foreign-library libmbedx509)
+;;; Load order is important! (see mbedtls-2.16.0/README.md)
 (use-foreign-library libmbedcrypto)
+(use-foreign-library libmbedx509)
 (use-foreign-library libmbedtls)
+;;; This is our own and depends on all of the previous.
 (use-foreign-library libmbed-aux)
 
 ;;; EOF
