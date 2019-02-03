@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-02 23:02:41>
+;;; Last Modified <michael 2019-02-02 23:07:50>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -534,11 +534,11 @@ Must accept a timeout argument.")
              (let ((res
                     (mbedtls-ssl-write (socket stream) c-chunk (length chunk))))
                (unless (eql res (length chunk))
-                 (log2:debug "mbedtls_ssl_write returned ~a" res)
+                 (log2:trace "mbedtls_ssl_write returned ~a" res)
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
                         :message (mbedtls-error-text res)))))))
-  (log2:debug "Wrote ~a bytes" (length data))
+  (log2:trace "Wrote ~a bytes" (length data))
   (length data))
 
 (defmethod write-to-stream ((stream plain-stream) (data string))
@@ -550,7 +550,7 @@ Must accept a timeout argument.")
         (error 'stream-write-error
                :location "write-to-stream plain"
                :message (mbedtls-error-text res)))
-      (log2:debug "Wrote ~a bytes, returning ~a" (length data) res)
+      (log2:trace "Wrote ~a bytes, returning ~a" (length data) res)
       res)))
 
 (defmethod write-to-stream ((stream plain-stream) (data vector))
