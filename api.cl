@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-04 20:27:15>
+;;; Last Modified <michael 2019-02-04 23:11:56>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -196,7 +196,7 @@ Must accept a timeout argument.")
   `(let ((,connvar (accept ,server ,@keys)))
      (cond
        (,connvar
-        (let* ((thread-name (create-thread-name))
+        (let* ((thread-name (create-thread-name ,server))
                (thread (bordeaux-threads:make-thread
                         (lambda ()
                           (unwind-protect
@@ -576,9 +576,6 @@ Must accept a timeout argument.")
 (defgeneric close-socket (stream))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod close-socket :before ((socket t))
-  (log2:info "Closing connection to peer ~a" (peer socket)))
-
 (defmethod close-socket ((stream ssl-stream))
   (log2:debug "Closing ~a" stream)
   (mbedtls-ssl-close-notify (socket stream))
@@ -589,6 +586,7 @@ Must accept a timeout argument.")
   (mbedtls-net-free (socket stream)))
 
 (defmethod close-socket ((socket socket-server))
+  (log2:debug "Closing server socket ~a" socket)
   (mbedtls-net-free (server-socket socket)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -698,8 +696,11 @@ Must accept a timeout argument.")
 (defmethod format-ip ((ip list))
   (format () "<~{~d~^.~}>" ip))
 
-(defun create-thread-name ()
-  (format () "handler-~d" (incf *thread-id*)))
+(defun create-thread-name (server)
+  (format () "handler-~a:~a-~d"
+          (server-host server)
+          (server-port server)
+          (incf *thread-id*)))
 
 ;;; EOF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
