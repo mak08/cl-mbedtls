@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-02 23:07:50>
+;;; Last Modified <michael 2019-02-04 20:27:15>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -225,44 +225,45 @@ Must accept a timeout argument.")
                      (timeout *accept-timeout*)
                      (send-fn *default-ssl-net-send-function*)
                      (recv-fn *default-ssl-net-recv-function*))
-    (multiple-value-bind (client-socket peer)
-        (%accept server timeout)
-      (when client-socket
+  (multiple-value-bind (client-socket peer)
+      (%accept server timeout)
+    (when client-socket
       (log2:info "Accepted SSL connection from peer ~a" peer)
       (let* ((ssl-env (create-ssl-env
-                         (server-cert server)
-                         (server-pkey server)
-                         (entropy-custom server)
-                         (debug-function server)
-                         (debug-threshold server)))
-               (ssl (ssl-env-ssl ssl-env))
-               (ssl-stream (make-instance 'ssl-stream
-                                          :socket ssl
-                                          :raw-socket client-socket
-                                          :ssl-env ssl-env
-                                          :peer peer
-                                          :keepalive (keepalive server))))
-          (check-retval 0 (reseed ssl-env))
-          (check-retval 0 (mbedtls-ssl-session-reset ssl))
-          (mbedtls-ssl-set-bio ssl
-                               client-socket
-                               send-fn
-                               (null-pointer)
-                               recv-fn)
-          (log2:trace "Performing handshake...")
-          (let ((res (loop
-                        :for ret = (mbedtls-ssl-handshake ssl)
-                        :while (or (eql ret MBEDTLS_ERR_SSL_WANT_READ)
-                                   (eql ret MBEDTLS_ERR_SSL_WANT_WRITE))
-                        :finally (return ret))))
-            (when (< res 0)
-              (deallocate ssl-stream)
-              (error 'stream-read-error
-                     :location "accept ssl"
-                     :message (mbedtls-error-text res))))
-          (log2:trace "Handshake complete")
-          (log2:debug "Connected to ~a" ssl-stream)
-          (values ssl-stream)))))
+                       (server-cert server)
+                       (server-pkey server)
+                       (entropy-custom server)
+                       (debug-function server)
+                       (debug-threshold server)))
+             (ssl (ssl-env-ssl ssl-env))
+             (ssl-stream (make-instance 'ssl-stream
+                                        :socket ssl
+                                        :raw-socket client-socket
+                                        :ssl-env ssl-env
+                                        :peer peer
+                                        :keepalive (keepalive server))))
+        (check-retval 0 (reseed ssl-env))
+        (check-retval 0 (mbedtls-ssl-session-reset ssl))
+        (mbedtls-ssl-set-bio ssl
+                             client-socket
+                             send-fn
+                             (null-pointer)
+                             recv-fn)
+        (log2:trace "Performing handshake...")
+        (let ((res (loop
+                      :for ret = (mbedtls-ssl-handshake ssl)
+                      :while (or (eql ret MBEDTLS_ERR_SSL_WANT_READ)
+                                 (eql ret MBEDTLS_ERR_SSL_WANT_WRITE))
+                      :finally (return ret))))
+          (when (< res 0)
+            (log2:warning "Error performing handshake on ~a, deallocating" ssl-stream)
+            (deallocate ssl-stream)
+            (error 'stream-read-error
+                   :location "accept ssl"
+                   :message (mbedtls-error-text res))))
+        (log2:trace "Handshake complete")
+        (log2:debug "Connected to ~a" ssl-stream)
+        (values ssl-stream)))))
 
 (defun %accept (server timeout)
   (let ((client-socket (foreign-alloc '(:struct mbedtls_net_context))))
