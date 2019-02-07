@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-04 23:11:56>
+;;; Last Modified <michael 2019-02-06 21:14:34>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -322,7 +322,7 @@ Must accept a timeout argument.")
       (when nodelay
         (check-retval 0
           (with-foreign-object (nodelay :int)
-            (setf (mem-ref nodelay :int) -1)
+            (setf (mem-ref nodelay :int) 1)
             (log2:debug "Socket: ~a" (mem-ref server-socket :int))
             (setsockopt (mem-aref server-socket :int) IPPROTO_TCP TCP_NODELAY nodelay 4))))
       (log2:info "HTTP Server listening at ~a:~a~%" host port)
@@ -354,7 +354,7 @@ Must accept a timeout argument.")
     (when nodelay
       (check-retval 0
         (with-foreign-object (nodelay :int)
-          (setf (mem-ref nodelay :int) -1)
+          (setf (mem-ref nodelay :int) 1)
           (log2:debug "Socket: ~a" (mem-ref server-socket :int))
           (setsockopt (mem-aref server-socket :int) IPPROTO_TCP TCP_NODELAY nodelay 4))))
     (let ((server
