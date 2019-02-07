@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-06 21:14:34>
+;;; Last Modified <michael 2019-02-07 23:57:03>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -229,12 +229,15 @@ Must accept a timeout argument.")
       (%accept server timeout)
     (when client-socket
       (log2:info "Accepted SSL connection from peer ~a" peer)
-      (let* ((ssl-env (create-ssl-env
-                       (server-cert server)
-                       (server-pkey server)
-                       (entropy-custom server)
-                       (debug-function server)
-                       (debug-threshold server)))
+      (let* ((ssl-config
+              (create-config
+               (server-cert server)
+               (server-pkey server)
+               (entropy-custom server)
+               (debug-function server)
+               (debug-threshold server)))
+             (ssl-env
+              (create-ssl-env ssl-config))
              (ssl (ssl-env-ssl ssl-env))
              (ssl-stream (make-instance 'ssl-stream
                                         :socket ssl
@@ -592,10 +595,9 @@ Must accept a timeout argument.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Server setup
 
-(defun create-ssl-env (cert pkey entropy-custom debug-function debug-threshold)
+(defun create-ssl-env (config)
   (log2:debug "Set up SSL context")
-  (let ((ssl (foreign-alloc '(:struct mbedtls_ssl_context)))
-        (config (create-config cert pkey entropy-custom debug-function debug-threshold)))
+  (let ((ssl (foreign-alloc '(:struct mbedtls_ssl_context))))
     (mbedtls-ssl-init ssl)
     (check-retval 0
       (mbedtls-ssl-setup ssl (ssl-config-conf config)))
