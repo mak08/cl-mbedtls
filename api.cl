@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-07 23:57:03>
+;;; Last Modified <michael 2019-02-08 00:57:21>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -151,7 +151,8 @@
    (server-pkey :reader server-pkey :initarg :pkey)
    (entropy-custom :reader entropy-custom :initarg :entropy-custom)
    (debug-function :reader debug-function :initarg :debug-function)
-   (debug-threshold :reader debug-threshold :initarg :debug-threshold)))
+   (debug-threshold :reader debug-threshold :initarg :debug-threshold)
+   (ssl-config% :accessor ssl-config% :initform nil)))
 
 (defstruct ssl-env ssl config client-fd)
 (defstruct ssl-config conf cache entropy ctr-drbg ciphers)
@@ -230,12 +231,7 @@ Must accept a timeout argument.")
     (when client-socket
       (log2:info "Accepted SSL connection from peer ~a" peer)
       (let* ((ssl-config
-              (create-config
-               (server-cert server)
-               (server-pkey server)
-               (entropy-custom server)
-               (debug-function server)
-               (debug-threshold server)))
+              (ssl-config server))
              (ssl-env
               (create-ssl-env ssl-config))
              (ssl (ssl-env-ssl ssl-env))
@@ -371,9 +367,23 @@ Must accept a timeout argument.")
                           :entropy-custom entropy-custom
                           :debug-function debug-function
                           :debug-threshold debug-level)))
+      ;; Called for side-effect
+      (ssl-config server)
       (log2:info "HTTPS Server listening at ~a:~a~%" host port)
       server)))
 
+
+(defgeneric ssl-config (socket-server))
+
+(defmethod ssl-config ((server ssl-socket-server))
+  (or (ssl-config% server)
+      (setf (ssl-config% server)
+            (create-ssl-config
+             (server-cert server)
+             (server-pkey server)
+             (entropy-custom server)
+             (debug-function server)
+             (debug-threshold server)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Is this still needed?
@@ -609,7 +619,7 @@ Must accept a timeout argument.")
   (foreign-free (ssl-env-ssl ssl-env))
   (deallocate (ssl-env-config ssl-env)))
 
-(defun create-config (cert pkey entropy-custom debug-function debug-threshold)
+(defun create-ssl-config (cert pkey entropy-custom debug-function debug-threshold)
   (let* ((conf (foreign-alloc '(:struct mbedtls_ssl_config)))
          (entropy (foreign-alloc '(:struct mbedtls_entropy_context)))
          (ctr-drbg (foreign-alloc '(:struct mbedtls_ctr_drbg_context)))
@@ -619,8 +629,22 @@ Must accept a timeout argument.")
     (mbedtls-entropy-init entropy)
     (mbedtls-ctr-drbg-init ctr-drbg)
 
+    ;; CTR_DRBG initial seeding
+    ;; The sample server
+    ;;   https://github.com/ARMmbed/mbedtls/blob/master/programs/ssl/ssl_pthread_server.c
+    ;; first seeds and then configures defaults...
+    (log2:debug "Seeding the RNG")
+    (check-retval 0
+      (with-foreign-string (custom entropy-custom)
+        ;; Digging deep into ctr_drbg.c reveals that $custom is copied internally,
+        ;; it may be stack-allocated here.
+        (mbedtls-ctr-drbg-seed ctr-drbg
+                               *mbedtls-entropy-func-function*
+                               entropy 
+                               custom
+                               (length entropy-custom))))
+
     (log2:debug "Configuring session defaults")
-     
     (check-retval 0
       (mbedtls-ssl-config-defaults conf
                                    MBEDTLS_SSL_IS_SERVER
@@ -635,17 +659,6 @@ Must accept a timeout argument.")
       (setf (mem-aref ciphersuites :int i)
             (aref all-ciphersuites i)))
     (mbedtls-ssl-conf-ciphersuites conf ciphersuites)
-
-    ;; CTR_DRBG initial seeding
-    (check-retval 0
-      (with-foreign-string (custom entropy-custom)
-        ;; Digging deep into ctr_drbg.c reveals that $custom is copied internally,
-        ;; it may be stack-allocated here.
-        (mbedtls-ctr-drbg-seed ctr-drbg
-                               *mbedtls-entropy-func-function*
-                               entropy 
-                               custom
-                               (length entropy-custom))))
 
     ;; Set the random number generator callback
     (mbedtls-ssl-conf-rng conf *mbedtls-ctr-drbg-random-function* ctr-drbg)
