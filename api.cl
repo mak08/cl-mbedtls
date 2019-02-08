@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-08 19:09:12>
+;;; Last Modified <michael 2019-02-08 23:22:21>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -333,6 +333,30 @@ Must accept a timeout argument.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 
+(defmacro with-server ((server host port
+                               &key
+                               (server-cert "/home/michael/certs/mbedTLS/localhost_cert.pem")
+                               (server-key "/home/michael/certs/mbedTLS/localhost_key.pem")
+                               (server-key-pw "")
+                               (keepalive 10000)
+                               (nodelay t)
+                               (entropy-custom "SSL_Server")
+                               (debug-function *my-debug-function*)
+                               (debug-level 0))
+                       &body body)
+  `(let ((,server (create-ssl-socket-server ,host ,port
+                                            :server-cert ,server-cert
+                                            :server-key ,server-key
+                                            :server-key-pw ,server-key-pw
+                                            :keepalive ,keepalive
+                                            :nodelay ,nodelay
+                                            :entropy-custom ,entropy-custom
+                                            :debug-function ,debug-function
+                                            :debug-level ,debug-level)))
+     (unwind-protect
+          (progn ,@body)
+       (deallocate ,server))))
+          
 (defun create-ssl-socket-server (host port
                                  &key
                                    (server-cert "/home/michael/certs/mbedTLS/localhost_cert.pem")

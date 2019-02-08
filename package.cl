@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-23 23:54:49>
+;;; Last Modified <michael 2019-02-08 20:55:36>
 
 (defpackage "MBEDTLS"
   (:use "COMMON-LISP"
@@ -23,27 +23,35 @@
    "CONNECT"
 
    ;; Server
-   "WITH-SERVER-CONNECTION"
-   "WITH-SERVER-CONNECTION-ASYNC"
-   
+   "WITH-SERVER"
+
    "CREATE-PLAIN-SOCKET-SERVER"
    "CREATE-SSL-SOCKET-SERVER"
-   "SOCKET-SERVER"
-   "ACCEPT"
+   "DEALLOCATE"
+
    "SERVER-SOCKET"
    "SERVER-PORT"
 
-   ;; Connection/Stream
+   ;; Connections
+   "WITH-SERVER-CONNECTION"
+   "WITH-SERVER-CONNECTION-ASYNC"
+   
+   "SOCKET-SERVER"
+   "ACCEPT"
+   "CLOSE-SOCKET"
+
+   "KEEPALIVE"
+   
+   
+   ;; Streams
    "SOCKET-STREAM"
    "PLAIN-STREAM"
    "SSL-STREAM"
    "PEER"
    "FORMAT-IP"
-   "KEEPALIVE"
    "GET-LINE"
    "GET-OCTETS"
-   "WRITE-TO-STREAM"
-   "CLOSE-SOCKET"))
+   "WRITE-TO-STREAM"))
 
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
