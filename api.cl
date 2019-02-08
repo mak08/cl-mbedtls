@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-08 00:57:21>
+;;; Last Modified <michael 2019-02-08 19:09:12>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -327,6 +327,9 @@ Must accept a timeout argument.")
       (log2:info "HTTP Server listening at ~a:~a~%" host port)
       server)))
 
+(defmethod deallocate ((server plain-socket-server))
+  (log2:info "Deallocating plain server ~a" server))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 
@@ -372,6 +375,9 @@ Must accept a timeout argument.")
       (log2:info "HTTPS Server listening at ~a:~a~%" host port)
       server)))
 
+(defmethod deallocate ((server ssl-socket-server))
+  (log2:info "Deallocating SSL Server ~a" server)
+  (deallocate (ssl-config% server)))
 
 (defgeneric ssl-config (socket-server))
 
@@ -616,8 +622,8 @@ Must accept a timeout argument.")
 
 (defmethod deallocate ((ssl-env ssl-env))
   (log2:debug "Destroy SSL context")
-  (foreign-free (ssl-env-ssl ssl-env))
-  (deallocate (ssl-env-config ssl-env)))
+  ;; Do NOT deallocate the ssl-env-config. It is managed by the server!
+  (foreign-free (ssl-env-ssl ssl-env)))
 
 (defun create-ssl-config (cert pkey entropy-custom debug-function debug-threshold)
   (let* ((conf (foreign-alloc '(:struct mbedtls_ssl_config)))
