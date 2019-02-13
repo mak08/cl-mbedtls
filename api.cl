@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-08 23:22:21>
+;;; Last Modified <michael 2019-02-09 18:20:49>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -153,6 +153,10 @@
    (debug-function :reader debug-function :initarg :debug-function)
    (debug-threshold :reader debug-threshold :initarg :debug-threshold)
    (ssl-config% :accessor ssl-config% :initform nil)))
+
+(defmethod deallocate :before ((server socket-server))
+  (log2:info "Releasing ~a:~a~%" (server-host server) (server-port server))
+  (mbedtls:close-socket server))
 
 (defstruct ssl-env ssl config client-fd)
 (defstruct ssl-config conf cache entropy ctr-drbg ciphers)
@@ -331,9 +335,10 @@ Must accept a timeout argument.")
   (log2:info "Deallocating plain server ~a" server))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; 
+;;;  
 
-(defmacro with-server ((server host port
+(defmacro with-server ((server protocol host port
+                               &rest keyargs
                                &key
                                (server-cert "/home/michael/certs/mbedTLS/localhost_cert.pem")
                                (server-key "/home/michael/certs/mbedTLS/localhost_key.pem")
@@ -344,18 +349,17 @@ Must accept a timeout argument.")
                                (debug-function *my-debug-function*)
                                (debug-level 0))
                        &body body)
-  `(let ((,server (create-ssl-socket-server ,host ,port
-                                            :server-cert ,server-cert
-                                            :server-key ,server-key
-                                            :server-key-pw ,server-key-pw
-                                            :keepalive ,keepalive
-                                            :nodelay ,nodelay
-                                            :entropy-custom ,entropy-custom
-                                            :debug-function ,debug-function
-                                            :debug-level ,debug-level)))
-     (unwind-protect
-          (progn ,@body)
-       (deallocate ,server))))
+  (ecase protocol
+    (:https
+     `(let ((,server (create-ssl-socket-server ,host ,port ,@keyargs)))
+        (unwind-protect
+             (progn ,@body)
+          (deallocate ,server))))
+    (:http
+     `(let ((,server (create-plain-socket-server ,host ,port ,@keyargs)))
+        (unwind-protect
+             (progn ,@body)
+          (deallocate ,server))))))
           
 (defun create-ssl-socket-server (host port
                                  &key
