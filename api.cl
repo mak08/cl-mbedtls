@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-09 18:20:49>
+;;; Last Modified <michael 2019-06-01 21:47:20>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -34,14 +34,14 @@
 (define-condition stream-write-error (located-error %stream-error)
   ()
   (:report (lambda (c s)
-             (format s "In function ~a: ~a"
+             (format s "In ~a: ~a"
                      (error.location c)
                      (error.message c)))))
 
 (define-condition stream-read-error (located-error %stream-error)
   ((timeout  :accessor error.timeout :initarg :timeout :initform -1))
   (:report (lambda (c s)
-             (format s "In function ~a: ~a (timeout ~a)"
+             (format s "In ~a: ~a (timeout ~a)"
                      (error.location c)
                      (error.message c)
                      (error.timeout c)))))
@@ -49,8 +49,9 @@
 (define-condition stream-empty-read (located-error %stream-error)
   ()
   (:report (lambda (c s)
-             (format s "In ~a: zero bytes received on stream ~a"
+             (format s "In ~a: ~a on stream ~a"
                      (error.location c)
+                     (error.message c)
                      (error.stream c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,12 +72,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions
 
-(defgeneric accept (socket-server &key timeout &allow-other-keys))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; The SSL ACCEPT method needs more work - eg. handling failed handshakes.
+
+(defgeneric accept (socket-server))
 (defgeneric deallocate (thing))
 
 (defmethod deallocate ((thing null))
   (log2:warning "Deallocating NULL?"))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Streams
@@ -175,16 +178,10 @@ Must accept a timeout argument.")
 (defvar *ciphersuites* (get-ciphers))
 (defvar *ciphersuite-names* (map 'vector #'mbedtls-ssl-get-ciphersuite-name *ciphersuites*))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ACCEPT calls are canceled after 1.5s by default.
-;;; The SSL ACCEPT method needs more work - eg. handling failed handshakes.
-
-(defparameter *accept-timeout* 1500)
-
 (defvar *thread-id* 0)
 
-(defmacro with-server-connection (((connvar server) &rest keys &key &allow-other-keys) &body body)
-  `(let ((,connvar (accept ,server ,@keys))
+(defmacro with-server-connection (((connvar server)) &body body)
+  `(let ((,connvar (accept ,server))
          (%id% (gensym)))
      (cond (,connvar
             (unwind-protect
@@ -197,8 +194,8 @@ Must accept a timeout argument.")
            (t
             (log2:trace "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
-(defmacro with-server-connection-async (((connvar server) &rest keys &key &allow-other-keys) &body body)
-  `(let ((,connvar (accept ,server ,@keys)))
+(defmacro with-server-connection-async (((connvar server)) &body body)
+  `(let ((,connvar (accept ,server)))
      (cond
        (,connvar
         (let* ((thread-name (create-thread-name ,server))
@@ -216,65 +213,61 @@ Must accept a timeout argument.")
        (t
         (log2:trace "WITH-SERVER-CONNECTION: Accept returned NIL")))))
 
-(defmethod accept ((server plain-socket-server)
-                   &key
-                     (timeout *accept-timeout*))
+(defmethod accept ((server plain-socket-server))
   (multiple-value-bind (client-socket peer)
-      (%accept server timeout)
+      (%accept server)
     (when client-socket
-      (log2:info "Accepted PLAIN connection from peer ~a" peer)
+      (log2:debug "Accepted PLAIN connection from peer ~a" peer)
       (make-instance 'plain-stream :socket client-socket :peer peer :keepalive (keepalive server)))))
 
-(defmethod accept ((server ssl-socket-server)
-                   &key
-                     (timeout *accept-timeout*)
-                     (send-fn *default-ssl-net-send-function*)
-                     (recv-fn *default-ssl-net-recv-function*))
-  (multiple-value-bind (client-socket peer)
-      (%accept server timeout)
-    (when client-socket
-      (log2:info "Accepted SSL connection from peer ~a" peer)
-      (let* ((ssl-config
-              (ssl-config server))
-             (ssl-env
-              (create-ssl-env ssl-config))
-             (ssl (ssl-env-ssl ssl-env))
-             (ssl-stream (make-instance 'ssl-stream
-                                        :socket ssl
-                                        :raw-socket client-socket
-                                        :ssl-env ssl-env
-                                        :peer peer
-                                        :keepalive (keepalive server))))
-        (check-retval 0 (reseed ssl-env))
-        (check-retval 0 (mbedtls-ssl-session-reset ssl))
-        (mbedtls-ssl-set-bio ssl
-                             client-socket
-                             send-fn
-                             (null-pointer)
-                             recv-fn)
-        (log2:trace "Performing handshake...")
-        (let ((res (loop
-                      :for ret = (mbedtls-ssl-handshake ssl)
-                      :while (or (eql ret MBEDTLS_ERR_SSL_WANT_READ)
-                                 (eql ret MBEDTLS_ERR_SSL_WANT_WRITE))
-                      :finally (return ret))))
-          (when (< res 0)
-            (log2:warning "Error performing handshake on ~a, deallocating" ssl-stream)
-            (deallocate ssl-stream)
-            (error 'stream-read-error
-                   :location "accept ssl"
-                   :message (mbedtls-error-text res))))
-        (log2:trace "Handshake complete")
-        (log2:debug "Connected to ~a" ssl-stream)
-        (values ssl-stream)))))
+(defmethod accept ((server ssl-socket-server))
+  (let ((send-fn *default-ssl-net-send-function*)
+        (recv-fn *default-ssl-net-recv-function*))
+    (multiple-value-bind (client-socket peer)
+        (%accept server)
+      (when client-socket
+        (log2:debug "Accepted SSL connection from peer ~a..." peer)
+        (let* ((ssl-config
+                (ssl-config server))
+               (ssl-env
+                (create-ssl-env ssl-config))
+               (ssl (ssl-env-ssl ssl-env))
+               (ssl-stream (make-instance 'ssl-stream
+                                          :socket ssl
+                                          :raw-socket client-socket
+                                          :ssl-env ssl-env
+                                          :peer peer
+                                          :keepalive (keepalive server))))
+          (check-retval 0 (reseed ssl-env))
+          (check-retval 0 (mbedtls-ssl-session-reset ssl))
+          (mbedtls-ssl-set-bio ssl
+                               client-socket
+                               send-fn
+                               (null-pointer)
+                               recv-fn)
+          (log2:trace "Performing handshake...")
+          (let ((res (loop
+                        :for ret = (mbedtls-ssl-handshake ssl)
+                        :while (or (eql ret MBEDTLS_ERR_SSL_WANT_READ)
+                                   (eql ret MBEDTLS_ERR_SSL_WANT_WRITE))
+                        :do (log2:debug "Handshake result: ~a ~a" ret peer)
+                        :finally (return ret))))
+            (when (< res 0)
+              (log2:warning "Error ~a performing handshake on ~a, deallocating" res ssl-stream)
+              (deallocate ssl-stream)
+              (error 'stream-read-error
+                     :location "accept ssl"
+                     :message (mbedtls-error-text res))))
+          (log2:trace "...handshake complete")
+          (log2:debug "...Connected to ~a" ssl-stream)
+          (values ssl-stream))))))
 
-(defun %accept (server timeout)
+(defun %accept (server)
   (let ((client-socket (foreign-alloc '(:struct mbedtls_net_context))))
     (mbedtls-net-init client-socket)
     (log2:trace "accept: Waiting for a remote connection ...")
     (multiple-value-bind (res peer)
-        ;; Use *accept-timeout* to allow the server loop to exit after a QUIT command
-        (mbedtls-net-accept (server-socket server) client-socket :timeout timeout)
+        (mbedtls-net-accept (server-socket server) client-socket)
       (cond
         ((null res)
          ;; mbedtls-net-accept returns NIL if polling fails and accept was not called 
@@ -431,7 +424,7 @@ Must accept a timeout argument.")
 
 (defmethod get-line ((stream socket-stream) &key (timeout nil))
   ;; Get CRLF terminated line from stream octets buffer;
-  ;; Convert to string assuming ASCII encoding
+  ;; Convert to string using the Lisp implentation's character encoding...
   (when (buffer-exhausted-p stream)
     (refresh-buffer stream :timeout timeout))
   (when (< (bufpos stream) (length (buffer stream)))
@@ -541,13 +534,23 @@ Must accept a timeout argument.")
       (setf (bufpos stream) 0)
       (setf (bufsize stream) res)
       (cond
+        ((= res MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
+         (error 'stream-empty-read
+                :location "refresh-buffer"
+                :message "CLOSE_NOTIFY received from peer"
+                :stream stream))
+        ((= res MBEDTLS_ERR_NET_CONN_RESET)
+         (error 'stream-read-error
+                :location "refresh-buffer"
+                :message "Connection reset by peer"
+                :stream stream))
+        ((= res 0)
+         (error 'stream-empty-read :location "refresh-buffer" :stream stream))
         ((< res 0)
          (error 'stream-read-error
                 :location "refresh-buffer"
-                :message (mbedtls-error-text res)
+                :message (concatenate 'string (format nil "RES=~a; " res) (mbedtls-error-text res))
                 :timeout timeout))
-        ((= res 0)
-         (error 'stream-empty-read :location "refresh-buffer" :stream stream))
         (t
          (setf (buffer stream)
                (convert-uint8-array-to-lisp (cbuffer-data (buffer% stream)) res))))

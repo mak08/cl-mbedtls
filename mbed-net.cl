@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-02 22:51:26>
+;;; Last Modified <michael 2019-05-31 21:41:00>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -103,49 +103,25 @@
   (buf_size size_t)
   (ip_len (:pointer size_t)))
 
-;; Accept a socket connection. Timeout = nil means no timeout.
-(defun mbedtls-net-accept (bind-context client-context &key (timeout 20000))
+(defun mbedtls-net-accept (bind-context client-context)
   (with-foreign-objects
       ((client-ip :int8 4)
        (client-ip-len '(:pointer :int))
-       (dest :unsigned-char (1+ INET_ADDRSTRLEN))
-       (fds '(:struct pollfd) 1))
-    (let ((fd1 fds)
-          (sock (foreign-slot-value bind-context '(:struct mbedtls_net_context) 'fd))
-          (ready 1))
-      (when timeout
-        (setf (foreign-slot-value fd1 '(:struct pollfd) 'fd) sock)
-        (setf (foreign-slot-value fd1 '(:struct pollfd) 'events) (logior pollin pollout))
-        (log2:trace "Polling ~a" sock)
-        (tagbody
-          :poll
-          (setf ready (poll fds 1 timeout))
-          (when (and (= ready -1) (= *errno* EINTR))
-            (log2:trace "Poll error: ~d ~s, retrying." ready (strerror-r *errno*))
-            (go :poll))))
-      (case ready
-        (0
-         ;; Designates a poll timeout
-         (log2:trace "Poll timout")
-         (values nil t))
-        (1
-         (let ((ret
-                 (mbedtls_net_accept bind-context client-context client-ip 4 client-ip-len)))
-           (cond ((not (= ret 0))
-                  (error "Socket accept error ~a" (mbedtls-error-text ret)))
-                 (t
-                  (unless (eql (mem-ref client-ip-len :int) 4)
-                    (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
-                  (let ((ip-p (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN))))
-                    (when (null ip-p)
-                      (let ((msg (strerror-r *errno*)))
-                        (log2:error "inet_ntop: ~a" msg)
-                        (error msg)))
-                    (log2:debug "Client IP: ~a" ip-p)
-                    (values ret ip-p))))))
-        (otherwise
-         (log2:trace "Poll error: Ready=~d, ~s" ready (strerror-r *errno*))
-         (values nil t))))))
+       (dest :unsigned-char (1+ INET_ADDRSTRLEN)))
+    (let ((ret
+           (mbedtls_net_accept bind-context client-context client-ip 4 client-ip-len)))
+      (cond ((not (= ret 0))
+             (error "Socket accept error ~a" (mbedtls-error-text ret)))
+            (t
+             (unless (eql (mem-ref client-ip-len :int) 4)
+               (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
+             (let ((ip-p (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN))))
+               (when (null ip-p)
+                 (let ((msg (strerror-r *errno*)))
+                   (log2:error "inet_ntop: ~a" msg)
+                   (error msg)))
+               (log2:debug "Client IP: ~a" ip-p)
+               (values ret ip-p)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; \brief          Set the socket blocking

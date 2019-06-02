@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2016-10-10 22:22:49>
+;;; Last Modified <michael 2019-05-28 21:11:17>
 
 (in-package mbedtls)
 
@@ -2337,6 +2337,7 @@
      :for res = (mbedtls_ssl_read ssl-context buffer length)
      :while (or (= res MBEDTLS_ERR_SSL_WANT_READ)
                 (= res MBEDTLS_ERR_SSL_WANT_WRITE))
+     :do (log2:trace "Res = ~a" res)
      :finally (return res)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
