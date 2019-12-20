@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-06-01 21:47:20>
+;;; Last Modified <michael 2019-12-20 22:05:51>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -29,22 +29,24 @@
    (location :accessor error.location :initarg :location :initform "(not provided)")))
 
 (define-condition %stream-error (error)
-  ((stream  :accessor error.stream :initarg :stream :initform "(not provided)")))
+  ((stream  :accessor error.stream :initarg :stream :initform "(not provided)")
+   (peer  :accessor error.peer :initarg :peer :initform "(not provided)")))
 
 (define-condition stream-write-error (located-error %stream-error)
   ()
   (:report (lambda (c s)
-             (format s "In ~a: ~a"
+             (format s "In ~a: ~a (peer ~a)"
                      (error.location c)
-                     (error.message c)))))
+                     (error.message c)
+                     (error.peer c)))))
 
 (define-condition stream-read-error (located-error %stream-error)
   ((timeout  :accessor error.timeout :initarg :timeout :initform -1))
   (:report (lambda (c s)
-             (format s "In ~a: ~a (timeout ~a)"
+             (format s "In ~a: ~a (peer ~a)"
                      (error.location c)
                      (error.message c)
-                     (error.timeout c)))))
+                     (error.peer c)))))
 
 (define-condition stream-empty-read (located-error %stream-error)
   ()
@@ -257,6 +259,7 @@ Must accept a timeout argument.")
               (deallocate ssl-stream)
               (error 'stream-read-error
                      :location "accept ssl"
+                     :peer peer
                      :message (mbedtls-error-text res))))
           (log2:trace "...handshake complete")
           (log2:debug "...Connected to ~a" ssl-stream)
@@ -277,6 +280,7 @@ Must accept a timeout argument.")
          (foreign-free client-socket)
          (error 'stream-read-error
                 :location "%accept"
+                :peer peer
                 :message (mbedtls-error-text res)))
         (t
          (log2:trace "Connected to ~a~%" (format-ip peer))
