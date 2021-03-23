@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-05-31 21:41:00>
+;;; Last Modified <michael 2021-02-19 21:01:17>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -103,17 +103,18 @@
   (buf_size size_t)
   (ip_len (:pointer size_t)))
 
-(defun mbedtls-net-accept (bind-context client-context)
+(defun mbedtls-net-accept (bind-context client-context &aux (client-ip-bufsize 1024))
   (with-foreign-objects
-      ((client-ip :int8 4)
+      ((client-ip :int8 client-ip-bufsize)
        (client-ip-len '(:pointer :int))
        (dest :unsigned-char (1+ INET_ADDRSTRLEN)))
     (let ((ret
-           (mbedtls_net_accept bind-context client-context client-ip 4 client-ip-len)))
+           (mbedtls_net_accept bind-context client-context client-ip client-ip-bufsize client-ip-len)))
       (cond ((not (= ret 0))
              (error "Socket accept error ~a" (mbedtls-error-text ret)))
             (t
-             (unless (eql (mem-ref client-ip-len :int) 4)
+             (unless (or (eql (mem-ref client-ip-len :int) 4)
+                         (eql (mem-ref client-ip-len :int) 16))
                (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
              (let ((ip-p (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN))))
                (when (null ip-p)

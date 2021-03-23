@@ -2,10 +2,9 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-06-14 17:26:40>
+;;; Last Modified <michael 2021-03-20 21:00:43>
 
 (in-package mbedtls)
-(declaim (optimize (debug 0) (safety 0) (speed 3) (space 0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Some useful C functions 
@@ -128,6 +127,18 @@
        :for k :from 0
        :for element = (mem-aref foreign-array element-type k)
        :while element
+       :do (vector-push-extend element result))
+    (values result)))
+
+(defun convert-array-0-to-lisp (foreign-array element-type
+                                  &aux (result (make-array  0
+                                                            :adjustable t :fill-pointer 0
+                                                            :element-type (foreign-type-to-lisp element-type))))  
+  (unless (null-pointer-p foreign-array)
+    (loop
+       :for k :from 0
+       :for element = (mem-aref foreign-array element-type k)
+       :while (> element 0)
        :do (vector-push-extend element result))
     (values result)))
 

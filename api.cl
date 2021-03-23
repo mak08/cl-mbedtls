@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-12-20 22:05:51>
+;;; Last Modified <michael 2021-03-20 21:01:07>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -16,8 +16,6 @@
 ;;;  - Add support for non-blocking I/O, currently only blocking I/O is supported
 ;;;  - Check for memory leaks related to SSL initialization
 ;;;    - Does CFFI free /return values/ of type string automatically?
-
-(declaim (optimize (debug 1) (safety 3) (speed 3)))
 
 (in-package mbedtls)
 

@@ -17,7 +17,9 @@ Files
  * mbed-aux.cl
         Bindings for libmbed_aux, poll, sockopt; CFFI aux functions
  * mbed-crypto.cl
-        Encryption, Hashing (NIY)
+        Encryption (NIY)
+ * mbed-hashing.cl
+        Hashing (NIY)
  * mbed-ctypes.cl
         System and mbedTLS datatype sizes and constantss
  * mbed-net.cl

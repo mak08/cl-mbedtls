@@ -28,10 +28,12 @@
 
 (defcstruct pollfd (fd :int) (events :short) (revents :short))
 
-(defcstruct (mbedtls_ssl_context :size 488))
+(defcstruct (mbedtls_ssl_context :size 456))
 (defcstruct (mbedtls_ssl_config :size 376))
 (defcstruct (mbedtls_ssl_session :size 152))
 (defcstruct (mbedtls_ssl_cache_context :size 64))
+
+(defcstruct (mbedtls_md_context_t :size 24))
 
 (defcstruct mbedtls_net_context (fd :int))
 
@@ -43,7 +45,7 @@
 (defcstruct (mbedtls_pk_info_t :size 96))
 (defcstruct (mbedtls_pk_type_t :size 4))
 
-(defcstruct (mbedtls_entropy_context :size 1072))
+(defcstruct (mbedtls_entropy_context :size 1080))
 
 (defcstruct (mbedtls_ctr_drbg_context :size 392))
 

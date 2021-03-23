@@ -6,8 +6,8 @@ MKDIR_P = mkdir -p
 
 PREFIX := /usr/local
 
-MBEDTLS_INCLUDES := /usr/local/include/mbedtls
-CFLAGS := -I$(MBEDTLS_INCLUDES)
+MBEDTLS_INCLUDES := -I/usr/local/include/mbedtls -I/usr/include/mbedtls
+CFLAGS := $(MBEDTLS_INCLUDES)
 
 # Building the executable as a prerequisite from the .cl file did not work,
 all: ctypes mbed-ctypes.cl mbed_aux.so

@@ -1,7 +1,7 @@
 /*
  * Description  Extract info from SSL headers  
  * Author       Michael Kappert 2015
- * Last Modified <michael 2017-08-06 00:39:30>
+ * Last Modified <michael 2019-12-30 01:59:15>
  */
 
 
@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 
 #include "ssl.h"
+#include "md.h"
 #include "net.h"
 #include "certs.h"
 #include "ssl_cache.h"
@@ -121,6 +122,9 @@ int main () {
   fprintf(fp, "(defcstruct (mbedtls_ssl_session :size %lu))\n", sizeof(mbedtls_ssl_session));
   fprintf(fp, "(defcstruct (mbedtls_ssl_cache_context :size %lu))\n", sizeof(mbedtls_ssl_cache_context));
 
+  fprintf(fp, "\n");
+  fprintf(fp, "(defcstruct (mbedtls_md_context_t :size %lu))\n", sizeof(mbedtls_md_context_t));
+  
   fprintf(fp, "\n");
   // fprintf(fp, "(defcstruct (mbedtls_net_context :size %lu))\n", sizeof(mbedtls_net_context));
   fprintf(fp, "(defcstruct mbedtls_net_context (fd :int))\n");

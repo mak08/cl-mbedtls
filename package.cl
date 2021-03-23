@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-02-10 02:24:25>
+;;; Last Modified <michael 2019-12-23 13:55:27>
 
 (defpackage "MBEDTLS"
   (:use "COMMON-LISP"
@@ -42,7 +42,6 @@
 
    "KEEPALIVE"
    
-   
    ;; Streams
    "SOCKET-STREAM"
    "PLAIN-STREAM"
@@ -51,7 +50,12 @@
    "FORMAT-IP"
    "GET-LINE"
    "GET-OCTETS"
-   "WRITE-TO-STREAM"))
+   "WRITE-TO-STREAM"
+
+   ;; Hashing
+   "MBEDTLS-MD-LIST-NAMES"
+   "MBEDTLS-MD"
+   ))
 
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

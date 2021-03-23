@@ -2,7 +2,7 @@
 ;;; Description
 ;;; Author         Michael Kappert
 ;;; Created        22/03/2000 11:15:16
-;;; Last Modified  <michael 2017-02-28 21:10:39>
+;;; Last Modified  <michael 2019-12-22 18:11:56>
 
 (defsystem "cl-mbedtls"
   :description "mbedTLS bindings"
@@ -19,6 +19,7 @@
                (:file "mbed-error")
                (:file "mbed-debug")
                (:file "mbed-net")
+               (:file "mbed-hashing")
                (:file "mbed-crypto")
                (:file "mbed-x509_crt")
                (:file "mbed-entropy")
