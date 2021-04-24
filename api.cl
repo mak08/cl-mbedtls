@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-03-20 21:01:07>
+;;; Last Modified <michael 2021-04-11 00:32:13>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -503,14 +503,15 @@ Must accept a timeout argument.")
                                     ;; (CALLBACK NET_RECV_TIMEOUT) does the same thing
                                     ;; for SSL (well, almost).)))
                                     timeout)))
+    (when (< res 0)
+      (log2:info "~a" (mbedtls-error-text res))
+      (error 'stream-read-error
+             :location "refresh-buffer"
+             :message (mbedtls-error-text res)
+             :timeout timeout))
     (setf (bufpos stream) 0)
     (setf (bufsize stream) res)
     (cond
-      ((< res 0)
-       (error 'stream-read-error
-              :location "refresh-buffer"
-              :message (mbedtls-error-text res)
-              :timeout timeout))
       ((= res 0)
        (log2:warning "empty read")
        (error 'stream-empty-read :location "refresh-buffer" :stream stream))
