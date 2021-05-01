@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-02-19 21:01:17>
+;;; Last Modified <michael 2021-05-01 17:19:11>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -25,6 +25,8 @@
 
 (defconstant MBEDTLS_NET_PROTO_TCP 0) ; /**< The TCP transport protocol */
 (defconstant MBEDTLS_NET_PROTO_UDP 1) ; /**< The UDP transport protocol */
+(defconstant MBEDTLS_NET_POLL_READ  1) ; Used in mbedtls_net_poll to check for pending data.
+(defconstant MBEDTLS_NET_POLL_WRITE 2) ; Used in mbedtls_net_poll to check if write possible.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; \brief          Initialize a context
@@ -103,26 +105,54 @@
   (buf_size size_t)
   (ip_len (:pointer size_t)))
 
-(defun mbedtls-net-accept (bind-context client-context &aux (client-ip-bufsize 1024))
+(defun mbedtls-net-accept (bind-context client-context &aux (client-ip-bufsize (1+ INET6_ADDRSTRLEN)))
   (with-foreign-objects
       ((client-ip :int8 client-ip-bufsize)
        (client-ip-len '(:pointer :int))
-       (dest :unsigned-char (1+ INET_ADDRSTRLEN)))
-    (let ((ret
-           (mbedtls_net_accept bind-context client-context client-ip client-ip-bufsize client-ip-len)))
+       ;; (dest4 :unsigned-char (1+ INET_ADDRSTRLEN))
+       (dest :unsigned-char (1+ INET6_ADDRSTRLEN)))
+    (let* ((ret
+             (mbedtls_net_accept bind-context client-context client-ip client-ip-bufsize client-ip-len))
+           (addrlen (mem-ref client-ip-len :int)))
       (cond ((not (= ret 0))
              (error "Socket accept error ~a" (mbedtls-error-text ret)))
             (t
-             (unless (or (eql (mem-ref client-ip-len :int) 4)
-                         (eql (mem-ref client-ip-len :int) 16))
-               (error "Invalid peer address length ~a" (mem-ref client-ip-len :int)))
-             (let ((ip-p (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN))))
+             (let ((ip-p
+                     (case addrlen
+                       (4 (inet-ntop AF_INET client-ip dest (1+ INET_ADDRSTRLEN)))
+                       (16 (inet-ntop AF_INET6 client-ip dest (1+ INET6_ADDRSTRLEN)))
+                       (otherwise
+                        (error "Invalid peer address length ~a" (mem-ref client-ip-len :int))))))
                (when (null ip-p)
                  (let ((msg (strerror-r *errno*)))
                    (log2:error "inet_ntop: ~a" msg)
                    (error msg)))
                (log2:debug "Client IP: ~a" ip-p)
                (values ret ip-p)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; \brief          Check and wait for the context to be ready for read/write
+;; 
+;; \param ctx      Socket to check
+;; \param rw       Bitflag composed of MBEDTLS_NET_POLL_READ and
+;;                 MBEDTLS_NET_POLL_WRITE specifying the events
+;;                 to wait for:
+;;                 - If MBEDTLS_NET_POLL_READ is set, the function
+;;                   will return as soon as the net context is available
+;;                   for reading.
+;;                 - If MBEDTLS_NET_POLL_WRITE is set, the function
+;;                   will return as soon as the net context is available
+;;                   for writing.
+;; \param timeout  Maximal amount of time to wait before returning,
+;;                 in milliseconds. If \c timeout is zero, the
+;;                 function returns immediately. If \c timeout is
+;;                 -1u, the function blocks potentially indefinitely.
+;; 
+;; \return         Bitmask composed of MBEDTLS_NET_POLL_READ/WRITE
+;;                 on success or timeout, or a negative return code otherwise.
+;; 
+;; int mbedtls_net_poll( mbedtls_net_context *ctx, uint32_t rw, uint32_t timeout );
+(defcfun "mbedtls_net_poll" :int (net_context (:pointer (:struct mbedtls_net_context))) (rw :uint32) (timeout :uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; \brief          Set the socket blocking
@@ -133,7 +163,7 @@
 ;;
 ;; int mbedtls_net_set_block( mbedtls_net_context *ctx );
 
-(defcfun "mbedtls_net_set_block" :int (net_contet (:pointer (:struct mbedtls_net_context))))
+(defcfun "mbedtls_net_set_block" :int (net_context (:pointer (:struct mbedtls_net_context))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; \brief          Set the socket non-blocking
@@ -144,7 +174,7 @@
 ;;
 ;; int mbedtls_net_set_nonblock( mbedtls_net_context *ctx );
 
-(defcfun "mbedtls_net_set_nonblock" :int (net_contet (:pointer (:struct mbedtls_net_context))))
+(defcfun "mbedtls_net_set_nonblock" :int (net_context (:pointer (:struct mbedtls_net_context))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; \brief          Portable usleep helper

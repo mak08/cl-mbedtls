@@ -14,10 +14,12 @@
 (defconstant _POSIX_C_SOURCE 200809)
 
 (defconstant INET_ADDRSTRLEN 16)
+(defconstant INET6_ADDRSTRLEN 46)
 
 (defconstant TCP_NODELAY 1)
 (defconstant IPPROTO_TCP 6)
 (defconstant AF_INET 2)
+(defconstant AF_INET6 10)
 
 (defconstant POLLIN 1)
 (defconstant POLLOUT 4)
@@ -45,7 +47,7 @@
 (defcstruct (mbedtls_pk_info_t :size 96))
 (defcstruct (mbedtls_pk_type_t :size 4))
 
-(defcstruct (mbedtls_entropy_context :size 1080))
+(defcstruct (mbedtls_entropy_context :size 37960))
 
 (defcstruct (mbedtls_ctr_drbg_context :size 392))
 

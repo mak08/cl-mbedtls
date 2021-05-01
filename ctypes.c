@@ -1,7 +1,7 @@
 /*
  * Description  Extract info from SSL headers  
  * Author       Michael Kappert 2015
- * Last Modified <michael 2019-12-30 01:59:15>
+ * Last Modified <michael 2021-05-01 12:13:27>
  */
 
 
@@ -93,11 +93,13 @@ int main () {
 
   fprintf(fp, "\n");
   fprintf(fp, "(defconstant INET_ADDRSTRLEN %i)\n", INET_ADDRSTRLEN);
+  fprintf(fp, "(defconstant INET6_ADDRSTRLEN %i)\n", INET6_ADDRSTRLEN);
 
   fprintf(fp, "\n");
   fprintf(fp, "(defconstant TCP_NODELAY %i)\n", TCP_NODELAY);
   fprintf(fp, "(defconstant IPPROTO_TCP %i)\n", IPPROTO_TCP);
   fprintf(fp, "(defconstant AF_INET %i)\n", AF_INET);
+  fprintf(fp, "(defconstant AF_INET6 %i)\n", AF_INET6);
 
 
   fprintf(fp, "\n");

@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-04-11 00:32:13>
+;;; Last Modified <michael 2021-04-30 20:56:05>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -39,7 +39,15 @@
                      (error.peer c)))))
 
 (define-condition stream-read-error (located-error %stream-error)
-  ((timeout  :accessor error.timeout :initarg :timeout :initform -1))
+  ()
+  (:report (lambda (c s)
+             (format s "In ~a: ~a (peer ~a)"
+                     (error.location c)
+                     (error.message c)
+                     (error.peer c)))))
+
+(define-condition stream-timeout (located-error %stream-error)
+  ((timeout :accessor error.timeout :initarg :timeout :initform -1))
   (:report (lambda (c s)
              (format s "In ~a: ~a (peer ~a)"
                      (error.location c)
@@ -133,6 +141,7 @@
       (when (< res 0)
         (error 'stream-read-error
                :location "connect"
+               :peer (format nil "~a:~a" host port)
                :message (mbedtls-error-text res)))
       (log2:debug "connect: Connected to ~a" peer)
       (make-instance 'plain-stream :socket client-socket :peer peer))))
@@ -503,18 +512,26 @@ Must accept a timeout argument.")
                                     ;; (CALLBACK NET_RECV_TIMEOUT) does the same thing
                                     ;; for SSL (well, almost).)))
                                     timeout)))
-    (when (< res 0)
-      (log2:info "~a" (mbedtls-error-text res))
-      (error 'stream-read-error
+    (when (= res MBEDTLS_ERR_SSL_TIMEOUT)
+      (error 'stream-timeout
              :location "refresh-buffer"
+             :peer stream
              :message (mbedtls-error-text res)
              :timeout timeout))
+    (when (< res 0)
+      (log2:info "~a: ~a" res (mbedtls-error-text res))
+      (error 'stream-read-error
+             :location "refresh-buffer"
+             :peer stream
+             :message (mbedtls-error-text res)))
     (setf (bufpos stream) 0)
     (setf (bufsize stream) res)
     (cond
       ((= res 0)
        (log2:warning "empty read")
-       (error 'stream-empty-read :location "refresh-buffer" :stream stream))
+       (error 'stream-empty-read :location "refresh-buffer"
+                                 :peer stream 
+                                 :stream stream))
       (t
        (setf (buffer stream)
              (convert-uint8-array-to-lisp (cbuffer-data (buffer% stream)) res))))
@@ -540,11 +557,13 @@ Must accept a timeout argument.")
         ((= res MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
          (error 'stream-empty-read
                 :location "refresh-buffer"
+                :peer stream
                 :message "CLOSE_NOTIFY received from peer"
                 :stream stream))
         ((= res MBEDTLS_ERR_NET_CONN_RESET)
          (error 'stream-read-error
                 :location "refresh-buffer"
+                :peer stream
                 :message "Connection reset by peer"
                 :stream stream))
         ((= res 0)
@@ -552,6 +571,7 @@ Must accept a timeout argument.")
         ((< res 0)
          (error 'stream-read-error
                 :location "refresh-buffer"
+                :stream stream
                 :message (concatenate 'string (format nil "RES=~a; " res) (mbedtls-error-text res))
                 :timeout timeout))
         (t
@@ -575,6 +595,7 @@ Must accept a timeout argument.")
                  (log2:trace "mbedtls_ssl_write returned ~a" res)
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
+                        :peer stream
                         :message (mbedtls-error-text res)))))))
   (log2:trace "Wrote ~a bytes" (length data))
   (length data))
@@ -591,6 +612,7 @@ Must accept a timeout argument.")
                  (log2:trace "mbedtls_ssl_write returned ~a" res)
                  (error 'stream-write-error
                         :location "write-to-stream ssl"
+                        :peer stream
                         :message (mbedtls-error-text res)))))))
   (log2:trace "Wrote ~a bytes" (length data))
   (length data))
@@ -617,6 +639,7 @@ Must accept a timeout argument.")
       (unless (eql res (length data))
         (error 'stream-write-error
                :location "write-to-stream plain"
+               :peer stream
                :message (mbedtls-error-text res)))
       (log2:trace "Wrote ~a chars, returning ~a" (length data) res)
       res)))

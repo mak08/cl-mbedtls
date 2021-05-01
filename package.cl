@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-12-23 13:55:27>
+;;; Last Modified <michael 2021-04-30 21:10:37>
 
 (defpackage "MBEDTLS"
   (:use "COMMON-LISP"
@@ -11,6 +11,7 @@
   (:export
 
    ;; Conditions
+   "STREAM-TIMEOUT"
    "STREAM-EMPTY-READ"
    "STREAM-READ-ERROR"
    "STREAM-WRITE-ERROR"
