@@ -2,7 +2,7 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-03-20 21:00:43>
+;;; Last Modified <michael 2021-05-08 21:39:49>
 
 (in-package mbedtls)
 
@@ -117,6 +117,15 @@
                  (mem-aref foreign-array :uint8 k)))
     (values result)))
 
+(defun convert-uint8-array-to-lisp-string (foreign-array length)
+  (unless (null-pointer-p foreign-array)
+    (let ((*print-base* 16))
+      (with-output-to-string (result)
+        (loop
+          :for k :below length
+          :do (format result "~a"
+                      (mem-aref foreign-array :uint8 k)))
+        (values result)))))
 
 (defun convert-array-nil-to-lisp (foreign-array element-type
                                   &aux (result (make-array  0

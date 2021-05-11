@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2019-12-30 22:51:56>
+;;; Last Modified <michael 2021-05-08 21:42:22>
 
 (in-package mbedtls)
 
@@ -192,7 +192,8 @@
     (log2:info "Initializing md context")
     (mbedtls-md-init)))
 
-(defun mbedtls-md (message &key (method "SHA512"))
+(defun mbedtls-md (message &key (method "SHA512") (result-type :bytes))
+  (ecase result-type (:bytes) (:chars))
   (let ((info (mbedtls-md-info-from-string method))
         (length (cond
                   ((string= method "SHA512") 64)
@@ -201,7 +202,7 @@
                   ((string= method "SHA224") 28)
                   ((string= method "SHA1") 20)
                   ((string= method "RIPEMD160") 20)
-                  ((string= method "MD5") 17)
+                  ((string= method "MD5") 16)
                   (t
                    (error "Unknown MD method ~a" method)))))
     (with-foreign-object (output :char length)
@@ -210,7 +211,12 @@
              (mbedtls_md info message (length message) output)))
         (case result
           (0
-           (let ((hash (convert-uint8-array-to-lisp output length)))
+           (let ((hash
+                   (case result-type
+                     (:bytes
+                      (convert-uint8-array-to-lisp output length))
+                     (:chars
+                      (convert-uint8-array-to-lisp-string output length)))))
              (mbedtls-md-clear-context *md-ctx*)
              hash))
           (otherwise
