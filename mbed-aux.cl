@@ -2,7 +2,7 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-05-08 21:39:49>
+;;; Last Modified <michael 2021-05-13 01:46:20>
 
 (in-package mbedtls)
 
@@ -123,7 +123,7 @@
       (with-output-to-string (result)
         (loop
           :for k :below length
-          :do (format result "~a"
+          :do (format result "~2,,,'0@A"
                       (mem-aref foreign-array :uint8 k)))
         (values result)))))
 
