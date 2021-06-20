@@ -2,7 +2,7 @@
 ;;; Description
 ;;; Author         Michael Kappert
 ;;; Created        22/03/2000 11:15:16
-;;; Last Modified  <michael 2021-06-09 21:18:30>
+;;; Last Modified  <michael 2021-06-19 23:51:42>
 
 (defsystem "cl-mbedtls"
   :description "mbedTLS bindings"
@@ -30,7 +30,8 @@
                
                (:file "ciphersuites")
                ;; Lisp programming API
-               (:file "api")))
+               (:file "api")
+               (:file "module-initialization")))
 
 ;;; EOF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-05-08 21:42:22>
+;;; Last Modified <michael 2021-06-19 23:49:28>
 
 (in-package mbedtls)
 
@@ -188,9 +188,8 @@
   (output :pointer))
 
 (defparameter *md-ctx*
-  (progn
-    (log2:info "Initializing md context")
-    (mbedtls-md-init)))
+  ;; Initialized in module-initialization
+  nil)
 
 (defun mbedtls-md (message &key (method "SHA512") (result-type :bytes))
   (ecase result-type (:bytes) (:chars))
