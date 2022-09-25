@@ -1,7 +1,7 @@
 /*
  * Description  Predefined mbedTLS callbacks
  * Author       Michael Kappert 2015
- * Last Modified <michael 2016-02-09 20:08:54>
+ * Last Modified <michael 2022-02-07 01:30:02>
  */
 
 #include "ssl.h"
@@ -33,8 +33,8 @@ void ( *my_debug_function ) (void *, int, const char *, int,   const char *) = m
 
 
 // net.h
-int ( *net_send_function ) (void *, const unsigned char *, size_t) = &mbedtls_net_send;
-int ( *net_recv_function ) (void *, unsigned char *, size_t)       = &mbedtls_net_recv;
+int ( *net_send_function ) (void *, const unsigned char *, size_t) = mbedtls_net_send;
+int ( *net_recv_function ) (void *, unsigned char *, size_t)       = mbedtls_net_recv;
 int ( *net_recv_timeout_function ) (void *, unsigned char *, size_t, uint32_t) = mbedtls_net_recv_timeout;
 
 // void *p_bio;                /*!< context for I/O operations   */
