@@ -2,7 +2,7 @@
 ;;; Description   CAUTION !!  By contrast to datatypes.c/datatypes.cl,
 ;;;               THIS FILE IS NOT generated from ssl_aux.c
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-05-13 01:46:20>
+;;; Last Modified <michael 2024-06-05 22:59:16>
 
 (in-package mbedtls)
 
@@ -49,11 +49,15 @@
   (n_fds :int)
   (timeout :int))
 
-(defcfun "inet_ntop" :string
-  (af :int)
-  (src :pointer)
-  (dst :pointer)
-  (size :int))
+(locally
+;;    (declare (optimize (safety 3) (debug 1) (space 1) (speed 0)))
+;;    (declare (optimize (safety 0) (debug 1) (space 1) (speed 3)))
+  (defcfun "inet_ntop" :string
+    (af :int)
+    (src :pointer)
+    (dst :pointer)
+    (size :int))
+  )
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Callbacks - remember the earmuffs

@@ -1,7 +1,7 @@
 /*
  * Description  Extract info from SSL headers  
  * Author       Michael Kappert 2015
- * Last Modified <michael 2021-05-01 12:13:27>
+ * Last Modified <michael 2025-07-27 16:44:58>
  */
 
 
@@ -18,20 +18,21 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 
-#include "ssl.h"
-#include "md.h"
-#include "net.h"
-#include "certs.h"
-#include "ssl_cache.h"
-#include "entropy.h"
-#include "ctr_drbg.h"
-#include "pk_internal.h"
+#include "mbedtls/build_info.h"
+#include "mbedtls/platform.h"
+#include "mbedtls/net_sockets.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/ssl_cache.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/x509.h"
 
 
 int main () {
   FILE *fp;
 
-  fprintf(stdout, "test_srv_crt: %lu\n", strlen(mbedtls_test_srv_crt));
+  // fprintf(stdout, "test_srv_crt: %lu\n", strlen(mbedtls_test_srv_crt));
 
   ////////////////////////////////////////////////////////////////////////////////
   // Create definitions
@@ -97,6 +98,11 @@ int main () {
 
   fprintf(fp, "\n");
   fprintf(fp, "(defconstant TCP_NODELAY %i)\n", TCP_NODELAY);
+  fprintf(fp, "(defconstant TCP_KEEPALIVE_TIME %i)\n", TCP_KEEPIDLE);
+  fprintf(fp, "(defconstant TCP_KEEPALIVE_INTVL %i)\n", TCP_KEEPINTVL);
+  fprintf(fp, "(defconstant TCP_KEEPALIVE_PROBES %i)\n", TCP_KEEPCNT);
+  fprintf(fp, "(defconstant SOL_SOCKET %i)\n", SOL_SOCKET);
+  fprintf(fp, "(defconstant SO_KEEPALIVE %i)\n", SO_KEEPALIVE);
   fprintf(fp, "(defconstant IPPROTO_TCP %i)\n", IPPROTO_TCP);
   fprintf(fp, "(defconstant AF_INET %i)\n", AF_INET);
   fprintf(fp, "(defconstant AF_INET6 %i)\n", AF_INET6);
@@ -139,7 +145,7 @@ int main () {
   (next (:pointer (:struct mbedtls_x509_crt)) :offset %lu))\n", sizeof(mbedtls_x509_crt), offset);
   fprintf(fp, "(defcstruct (mbedtls_x509_crl :size %lu))\n", sizeof(mbedtls_x509_crl));
   fprintf(fp, "(defcstruct (mbedtls_pk_context :size %lu))\n", sizeof(mbedtls_pk_context));
-  fprintf(fp, "(defcstruct (mbedtls_pk_info_t :size %lu))\n", sizeof(mbedtls_pk_info_t));
+  //   fprintf(fp, "(defcstruct (mbedtls_pk_info_t :size %lu))\n", sizeof(mbedtls_pk_info_t));
   fprintf(fp, "(defcstruct (mbedtls_pk_type_t :size %lu))\n", sizeof(mbedtls_pk_type_t));
 
   fprintf(fp, "\n");

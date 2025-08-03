@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2015-12-06 00:13:53>
+;;; Last Modified <michael 2025-07-27 16:44:37>
 
 (in-package mbedtls)
 
@@ -225,7 +225,7 @@
 (defcfun "mbedtls_pk_setup"
     :int
   (ctx (:pointer (:struct mbedtls_pk_context)))
-  (info (:pointer (:struct mbedtls_pk_info_t))))
+  (info :pointer))
 
 ;; #if defined(MBEDTLS_PK_RSA_ALT_SUPPORT)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

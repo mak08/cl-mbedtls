@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description   mbedTLS sockets
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-04-30 20:56:05>
+;;; Last Modified <michael 2023-01-29 22:35:36>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ToDo
@@ -174,8 +174,8 @@
 (defstruct ssl-config conf cache entropy ctr-drbg ciphers)
 
 (defparameter *default-ssl-net-send-function*
-  ;; *net-send-function*
-  (callback net-send)
+  *net-send-function*
+  ;; (callback net-send)
   "The send function installed by ACCEPT if the send_fn keyword is not used.")
 
 (defparameter *default-ssl-net-recv-function*
@@ -433,20 +433,38 @@ Must accept a timeout argument.")
 
 (defgeneric get-line (stream &key timeout))
 
+;;; get-line currently fails if the stream buffer contains data but no newline.
+;;; The following situations may occur:
+;;; 1 - CR- or CRLF-terminated line in buffer: Return the line
+;;; 2 - Buffer contains data but no newline
+;;; 3 - BUffer is empty
+;;; Exceptions
+;;; - Timeout
+;;; - Line Too Long
+;;; - Connection Closed by Peer
+
 (defmethod get-line ((stream socket-stream) &key (timeout nil))
   ;; Get CRLF terminated line from stream octets buffer;
   ;; Convert to string using the Lisp implentation's character encoding...
   (when (buffer-exhausted-p stream)
+    (log2:trace "Rebuffering")
     (refresh-buffer stream :timeout timeout))
-  (when (< (bufpos stream) (length (buffer stream)))
-    (let ((nextpos (position 13 (buffer stream) :start (bufpos stream))))
-      (when nextpos
-        (prog1
-            (map 'string #'code-char (subseq (buffer stream) (bufpos stream) nextpos))
-          (setf (bufpos stream) (1+ nextpos))
-          (when (and (< (bufpos stream) (bufsize stream))
-                     (eql (aref (buffer stream) (bufpos stream)) 10))
-            (incf (bufpos stream))))))))
+  (cond
+    ((< (bufpos stream) (length (buffer stream)))
+     (log2:trace-more "Reading buffer...")
+     (let ((nextpos (position 13 (buffer stream) :start (bufpos stream) :end (bufsize stream))))
+       (when (null nextpos)
+         (log2:trace "Missing newline, reading until EOB")
+         (setf nextpos  (length (buffer stream))))
+       (log2:trace-more "Reading ~a:~a (~a characters)" (bufpos stream) nextpos (- nextpos (bufpos stream)))
+       (prog1
+           (map 'string #'code-char (subseq (buffer stream) (bufpos stream) nextpos))
+         (setf (bufpos stream) (1+ nextpos))
+         (when (and (< (bufpos stream) (bufsize stream))
+                    (eql (aref (buffer stream) (bufpos stream)) 10))
+           (incf (bufpos stream))))))
+    (t
+     (log2:trace "Empty buffer"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; API function
@@ -488,8 +506,6 @@ Must accept a timeout argument.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; internal function
 
-(defgeneric refresh-buffer (stream &key timeout))
-
 ;;; Blocking read with timeout.
 ;;; There are different timeout mechanisms for plain streams and ssl streams:
 ;;; - Plain streams simply use mbedtls-net-recv-timeout.
@@ -498,10 +514,14 @@ Must accept a timeout argument.")
 ;;;   stream with mbed-ssl-read, but this function does not have a timeout argument. 
 ;;;   Instead the timeout must be configured with mbedtls-ssl-conf-read-timeout.
 
+(defgeneric refresh-buffer (stream &key timeout)
+  (:documentation
+   "Discard data from buffer and fill buffer from socket. Reads at most buffer-length data."))
+
 (defmethod refresh-buffer ((stream plain-stream) &key (timeout nil))
   (unless (buffer-exhausted-p stream)
     (log2:error "Refreshing buffer before it was exhausted"))
-  (log2:debug "Rebuffering")
+  (log2:trace "Rebuffering, maxlen ~a"  (cbuffer-length (buffer% stream)))
   (clear-buffer (cbuffer-data (buffer% stream)) (cbuffer-length (buffer% stream)))
   (let* ((timeout (or timeout (timeout stream)))
          (res
@@ -513,6 +533,7 @@ Must accept a timeout argument.")
                                     ;; for SSL (well, almost).)))
                                     timeout)))
     (when (= res MBEDTLS_ERR_SSL_TIMEOUT)
+      (log2:trace "Timed out")
       (error 'stream-timeout
              :location "refresh-buffer"
              :peer stream
@@ -580,6 +601,49 @@ Must accept a timeout argument.")
       res)))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Rebuffer
+
+(defgeneric rebuffer (stream &key timeout))
+
+(defmethod rebuffer ((stream plain-stream) &key (timeout nil))
+  (log2:trace "Rebuffering, maxlen ~a"  (cbuffer-length (buffer% stream)))
+
+  (let* ((timeout (or timeout (timeout stream)))
+         (res
+          (mbedtls-net-recv-timeout (socket stream)
+                                    (cbuffer-data (buffer% stream))
+                                    (cbuffer-length (buffer% stream))
+                                    ;; Use the keepalive-timeout if provided.
+                                    ;; (CALLBACK NET_RECV_TIMEOUT) does the same thing
+                                    ;; for SSL (well, almost).)))
+                                    timeout)))
+    (when (= res MBEDTLS_ERR_SSL_TIMEOUT)
+      (log2:trace "Timed out")
+      (error 'stream-timeout
+             :location "refresh-buffer"
+             :peer stream
+             :message (mbedtls-error-text res)
+             :timeout timeout))
+    (when (< res 0)
+      (log2:info "~a: ~a" res (mbedtls-error-text res))
+      (error 'stream-read-error
+             :location "refresh-buffer"
+             :peer stream
+             :message (mbedtls-error-text res)))
+    (setf (bufpos stream) 0)
+    (setf (bufsize stream) res)
+    (cond
+      ((= res 0)
+       (log2:warning "empty read")
+       (error 'stream-empty-read :location "refresh-buffer"
+                                 :peer stream 
+                                 :stream stream))
+      (t
+       (setf (buffer stream)
+             (convert-uint8-array-to-lisp (cbuffer-data (buffer% stream)) res))))
+    res))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric write-to-stream (stream data))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -627,7 +691,7 @@ Must accept a timeout argument.")
                :location "write-to-stream plain"
                :message (mbedtls-error-text res)))
       (log2:trace "Wrote ~a bytes, returning ~a" (length data) res)
-      res)))
+      (length data))))
 
 (defmethod write-to-stream ((stream plain-stream) (data vector))
   (log2:trace "Writing ~a chars" (length data))

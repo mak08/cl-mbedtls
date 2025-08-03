@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-23 23:46:39>
+;;; Last Modified <michael 2025-07-27 21:26:21>
 
 (in-package mbedtls)
 
@@ -104,18 +104,22 @@
                           (authentication nil)
                           (hash nil)
                           (encryption nil))
-  (destructuring-bind (prefix ke auth with h encr &rest broken)
-      (cl-utilities:split-sequence #\- name )
-    (and  (or (null ciphers-list)
-              (member name ciphers-list :test #'string-equal))
-          (or (null key-exchange)
-              (string= key-exchange ke))
-          (or (null authentication)
-              (string= authentication auth))
-          (or (null hash)
-              (string= hash h))
-          (or (null encryption)
-              (string= encryption encr)))))
+  (handler-case 
+      (destructuring-bind (prefix ke auth with h encr &rest broken)
+          (cl-utilities:split-sequence #\- name )
+        (and  (or (null ciphers-list)
+                  (member name ciphers-list :test #'string-equal))
+              (or (null key-exchange)
+                  (string= key-exchange ke))
+              (or (null authentication)
+                  (string= authentication auth))
+              (or (null hash)
+                  (string= hash h))
+              (or (null encryption)
+                  (string= encryption encr))))
+    (error (e)
+      (log2:warning "Unhandled ciphersuite ~a" name)
+      (values nil))))
           
 (defun get-ciphers (&key
                     (ciphers-list +mozilla-ciphers+)

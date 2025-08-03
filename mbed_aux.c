@@ -1,14 +1,14 @@
 /*
  * Description  Predefined mbedTLS callbacks
  * Author       Michael Kappert 2015
- * Last Modified <michael 2022-02-07 01:30:02>
+ * Last Modified <michael 2025-07-27 21:07:12>
  */
 
-#include "ssl.h"
-#include "net.h"
-#include "entropy.h"
-#include "ctr_drbg.h"
-#include "ssl_cache.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/net_sockets.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/ssl_cache.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 ///    Some mbedTLS functions (that we call from Lisp) require callbacks as 
@@ -46,6 +46,6 @@ int ( *mbedtls_entropy_func_function ) (void *data, unsigned char *output, size_
 int ( *mbedtls_ctr_drbg_random_function ) (void *p_rng, unsigned char *output, size_t output_len ) = mbedtls_ctr_drbg_random;
 
 // ssl_cache.h
-int ( *mbedtls_ssl_cache_get_function ) (void *, mbedtls_ssl_session *) = mbedtls_ssl_cache_get;
-int ( *mbedtls_ssl_cache_set_function ) (void *, const mbedtls_ssl_session *) = mbedtls_ssl_cache_set;
+int ( *mbedtls_ssl_cache_get_function ) (void *, unsigned char const *, size_t, mbedtls_ssl_session *) = mbedtls_ssl_cache_get;
+int ( *mbedtls_ssl_cache_set_function ) (void *, unsigned char const *, size_t, const mbedtls_ssl_session *) = mbedtls_ssl_cache_set;
 

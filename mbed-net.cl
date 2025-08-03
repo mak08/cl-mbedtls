@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2021-05-01 17:19:11>
+;;; Last Modified <michael 2024-06-03 20:16:25>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Use these as *net-send-function* *net-recv-function* *net-recv-timeout-function*
@@ -114,6 +114,7 @@
     (let* ((ret
              (mbedtls_net_accept bind-context client-context client-ip client-ip-bufsize client-ip-len))
            (addrlen (mem-ref client-ip-len :int)))
+      (log2:trace "Addrlen: ~a" addrlen)
       (cond ((not (= ret 0))
              (error "Socket accept error ~a" (mbedtls-error-text ret)))
             (t
