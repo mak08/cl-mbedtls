@@ -11,7 +11,7 @@
 
 (defconstant EINTR 4)
 
-(defconstant _POSIX_C_SOURCE 200809)
+(defconstant _POSIX_C_SOURCE 202405)
 
 (defconstant INET_ADDRSTRLEN 16)
 (defconstant INET6_ADDRSTRLEN 46)
